@@ -1,39 +1,40 @@
 SELECT 
 	seoaa.[BeginDate]
 	,seoaa.[EducationOrganizationId]
-	,scd.ShortDescription AS AssignmentType
 	,seoaa.[StaffUSI]
+	,scd.CodeValue AS StaffAssignmentType
+	,'Math/FineArts, etc..TBD' AS AssignmentSubjectCategory --depending on decision.
+	,'High,Elementary etc' AS SchoolSegment -- will be mapped to [edfi].[EducationOrganizationCategory] once populated
 	,cred.ShortDescription AS CredentialType
-	,'' AS Segment --EducationOrganizationCategory goes here.
-	,school.[NameOfInstitution] AS SchoolName
+,school.[NameOfInstitution] AS Campus -- Name used in the Dashboard
 	,school.[EducationOrganizationId] AS SchoolId
-	,lea.[NameOfInstitution] AS LEAName
+	,lea.[NameOfInstitution] AS District --Name used in the Dashboard
 	,lea.[EducationOrganizationId] AS LEAId
-	,r.[ShortDescription] AS RaceEthnic
+	,r.[CodeValue] AS RaceEthnic
 	,s.[FirstName]
 	,s.[LastSurname]
 	,s.[YearsOfPriorTeachingExperience]
 	,seoaa.[EndDate]
 	,seoaa.[PositionTitle]
 
-FROM [EdFi_Ods_Sandbox_oKFXKjFNu2jK].[edfi].[StaffEducationOrganizationAssignmentAssociation] as seoaa -- starting with Staff EdOrg because it contains historical
-	Left Join [EdFi_Ods_Sandbox_oKFXKjFNu2jK].[edfi].[Staff] AS s
+FROM [EdFi_Ods_Populated_Template].[edfi].[StaffEducationOrganizationAssignmentAssociation] as seoaa -- starting with Staff EdOrg because it contains historical
+	Left Join [EdFi_Ods_Populated_Template].[edfi].[Staff] AS s -- Add staff table for demographics
 		ON s.StaffUSI = seoaa.StaffUSI
-	left Join [EdFi_Ods_Sandbox_oKFXKjFNu2jK].[edfi].[StaffRace] AS sr
+	left Join [EdFi_Ods_Populated_Template].[edfi].[StaffRace] AS sr -- Add Staff Race
 		ON sr.StaffUSI = seoaa.StaffUSI
-	LEFT JOIN [EdFi_Ods_Sandbox_oKFXKjFNu2jK].[edfi].[EducationOrganization] AS school --then seoa joined to school to get School Name
+	LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[EducationOrganization] AS school --then seoa joined to school to get School Name
 		ON school.EducationOrganizationId = seoaa.EducationOrganizationId
-	LEFT JOIN [EdFi_Ods_Sandbox_oKFXKjFNu2jK].[edfi].[School] AS SchoolLEA --now join school to get associated LEA
+	LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[School] AS SchoolLEA --now join school to get associated LEA
 		ON SchoolLEA.SchoolId = seoaa.EducationOrganizationId
-	LEFT JOIN [EdFi_Ods_Sandbox_oKFXKjFNu2jK].[edfi].[EducationOrganization] AS lea --finally join seoa again to get LEA Name
+	LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[EducationOrganization] AS lea --finally join seoa again to get LEA Name
 		ON lea.EducationOrganizationId = SchoolLEA.LocalEducationAgencyId
-	LEFT JOIN [EdFi_Ods_Sandbox_oKFXKjFNu2jK].[edfi].[Descriptor] AS r
+	LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS r --Add race descriptor
 		ON r.DescriptorId = sr.RaceDescriptorId
-	LEFT JOIN [EdFi_Ods_Sandbox_oKFXKjFNu2jK].[edfi].[Descriptor] AS scd
+	LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS scd --add staff classification
 		ON scd.DescriptorId = seoaa.StaffClassificationDescriptorId
-	LEFT JOIN [EdFi_Ods_Sandbox_oKFXKjFNu2jK].[edfi].[StaffCredential] AS sc
+	LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[StaffCredential] AS sc
 		ON sc.StaffUSI = s.StaffUSI
-	LEFT JOIN [EdFi_Ods_Sandbox_oKFXKjFNu2jK].[edfi].[Credential] AS c
+	LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Credential] AS c -- Add in staff credential and descriptor
 		ON c.CredentialIdentifier = sc.CredentialIdentifier
-	LEFT JOIN [EdFi_Ods_Sandbox_oKFXKjFNu2jK].[edfi].[Descriptor] AS cred
+	LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS cred
 		ON cred.DescriptorId = c.CredentialFieldDescriptorId
