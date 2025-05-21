@@ -2,11 +2,18 @@ SELECT
 	seoaa.[BeginDate]
 	,seoaa.[EducationOrganizationId]
 	,seoaa.[StaffUSI]
+	,seoaa.[EndDate]
+	, CASE
+		WHEN [EndDate] is null THEN null
+		WHEN month([EndDate]) >= 6 then year([EndDate])
+		ELSE year([EndDate])-1
+		END
+		AS nonRetentionYear
 	,scd.CodeValue AS StaffAssignmentType
 	,'Math/FineArts, etc..TBD' AS AssignmentSubjectCategory --depending on decision.
 	,'High,Elementary etc' AS SchoolSegment -- will be mapped to [edfi].[EducationOrganizationCategory] once populated
 	,cred.ShortDescription AS CredentialType
-,school.[NameOfInstitution] AS Campus -- Name used in the Dashboard
+	,school.[NameOfInstitution] AS Campus -- Name used in the Dashboard
 	,school.[EducationOrganizationId] AS SchoolId
 	,lea.[NameOfInstitution] AS District --Name used in the Dashboard
 	,lea.[EducationOrganizationId] AS LEAId
@@ -14,8 +21,7 @@ SELECT
 	,s.[FirstName]
 	,s.[LastSurname]
 	,s.[YearsOfPriorTeachingExperience]
-	,seoaa.[EndDate]
-	,seoaa.[PositionTitle]
+
 
 FROM [EdFi_Ods_Populated_Template].[edfi].[StaffEducationOrganizationAssignmentAssociation] as seoaa -- starting with Staff EdOrg because it contains historical
 	Left Join [EdFi_Ods_Populated_Template].[edfi].[Staff] AS s -- Add staff table for demographics
