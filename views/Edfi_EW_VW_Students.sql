@@ -11,7 +11,7 @@ SELECT
 	,lea.[EducationOrganizationId] AS LEAId
 	,r.[ShortDescription] AS RaceEthnic
 
-FROM [EdFi_Ods_Sandbox_oKFXKjFNu2jK].[edfi].[StudentSchoolAssociation] as ssa -- starting with studentSchool because it contains entry/exit dates to enable historical view
+FROM [EdFi_Ods_Populated_Template].[edfi].[StudentSchoolAssociation] as ssa -- starting with studentSchool because it contains entry/exit dates to enable historical view
 	LEFT JOIN   [EdFi_Ods_Sandbox_oKFXKjFNu2jK].[edfi].[Student] AS stud --then adding student details for enrollment
 		ON ssa.StudentUSI = stud.StudentUSI
 	LEFT JOIN [EdFi_Ods_Sandbox_oKFXKjFNu2jK].[edfi].[EducationOrganization] AS school --then seoa joined to school to get School Name
