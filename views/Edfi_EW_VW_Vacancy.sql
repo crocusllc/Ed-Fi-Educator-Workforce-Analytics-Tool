@@ -5,6 +5,7 @@ WITH VacancyBase AS (
         osp.[EducationOrganizationId]
         ,osp.DatePosted
         ,osp.DatePostingRemoved
+        ,osp.RequisitionNumber
         ,CASE WHEN osp.DatePostingRemoved IS NULL THEN 1 ELSE 0 END as isPositionOpen -- Indicates if the position is currently open (1) or closed (0)
         ,'Math/FineArts, etc..TBD' AS AssignmentCategory -- Placeholder for assignment category
         ,'High,Elementary etc' AS Segment -- Placeholder for segment
@@ -65,6 +66,7 @@ SELECT
     vb.[EducationOrganizationId]
     ,vb.DatePosted
     ,vb.DatePostingRemoved
+    ,vb.RequisitionNumber
     ,vb.isPositionOpen
     ,vb.AssignmentCategory
     ,vb.Segment
@@ -87,6 +89,7 @@ SELECT
     vb.[EducationOrganizationId]
     ,vb.DatePosted
     ,vb.DatePostingRemoved
+    ,vb.RequisitionNumber
     ,vb.isPositionOpen
     ,vb.AssignmentCategory
     ,vb.Segment
