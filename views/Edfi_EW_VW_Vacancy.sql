@@ -7,8 +7,21 @@ WITH VacancyBase AS (
         ,osp.DatePostingRemoved
         ,osp.RequisitionNumber
         ,CASE WHEN osp.DatePostingRemoved IS NULL THEN 1 ELSE 0 END as isPositionOpen -- Indicates if the position is currently open (1) or closed (0)
-        ,'Math/FineArts, etc..TBD' AS AssignmentCategory -- Placeholder for assignment category
-        ,'High,Elementary etc' AS Segment -- Placeholder for segment
+        ,CASE
+            WHEN DAY(DatePosted) between 1 and 6 THEN 'Math'
+            WHEN DAY(DatePosted) between 7 and 13 THEN 'English'
+            WHEN DAY(DatePosted) between 14 and 22 THEN 'Science'
+            WHEN DAY(DatePosted) between 23 and 31 THEN 'Social Studies'
+            else 'Other'
+         END
+            AS AssignmentCategory -- Placeholder for assignment category
+        ,CASE
+            WHEN DAY(DatePosted) between 1 and 6 THEN 'High'
+            WHEN DAY(DatePosted) between 7 and 13 THEN 'Middle'
+            WHEN DAY(DatePosted) between 14 and 22 THEN 'Elementary'
+            WHEN DAY(DatePosted) between 23 and 31 THEN 'Junior High'
+            else 'Other'
+         END AS Segment -- Placeholder for segment
         ,scd.CodeValue AS AssignmentType -- Staff classification descriptor value
         ,school.[NameOfInstitution] AS Campus -- Name of the institution (Campus)
         ,school.[EducationOrganizationId] AS SchoolId -- Education Organization ID for the school

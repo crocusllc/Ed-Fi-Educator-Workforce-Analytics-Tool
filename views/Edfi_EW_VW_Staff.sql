@@ -47,8 +47,20 @@ SELECT
         ELSE YEAR(seoaa.[EndDate]) - 1
     END AS nonRetentionYear,
     scd.CodeValue AS StaffAssignmentType,
-    'Math/FineArts, etc..TBD' AS AssignmentSubjectCategory, -- Placeholder as per your request
-    'High,Elementary etc' AS SchoolSegment, -- Placeholder as per your request
+    CASE
+            WHEN DAY(BeginDate) between 1 and 6 THEN 'Math'
+            WHEN DAY(BeginDate) between 7 and 13 THEN 'English'
+            WHEN DAY(BeginDate) between 14 and 22 THEN 'Science'
+            WHEN DAY(BeginDate) between 23 and 31 THEN 'Social Studies'
+            else 'Other'
+         END AS AssignmentSubjectCategory, -- Placeholder as per your request
+    CASE
+            WHEN DAY(BeginDate) between 1 and 6 THEN 'High'
+            WHEN DAY(BeginDate) between 7 and 13 THEN 'Middle'
+            WHEN DAY(BeginDate) between 14 and 22 THEN 'Elementary'
+            WHEN DAY(BeginDate) between 23 and 31 THEN 'Junior High'
+            else 'Other'
+         END AS SchoolSegment, -- Placeholder as per your request
     cred.ShortDescription AS CredentialType,
     school.[NameOfInstitution] AS Campus, -- Name used in the Dashboard
     school.[EducationOrganizationId] AS SchoolId,
