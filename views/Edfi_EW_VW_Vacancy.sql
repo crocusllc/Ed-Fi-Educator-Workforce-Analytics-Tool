@@ -1,27 +1,119 @@
-CREATE VIEW vw_Student AS
-SELECT 
-	stud.[StudentUSI]
-	,stud.[FirstName]
-	,stud.[LastSurname]
-	,ssa.[EntryDate]
-	,'' AS SchoolYear
-	,ssa.[ExitWithdrawDate]
-	,school.[NameOfInstitution] AS SchoolName
-	,school.[EducationOrganizationId] AS SchoolId
-	,lea.[NameOfInstitution] AS LEAName
-	,lea.[EducationOrganizationId] AS LEAId
-	,r.[ShortDescription] AS RaceEthnic
+CREATE VIEW vw_VacancyData AS
+WITH VacancyBase AS (
+    SELECT
+        osp.[EducationOrganizationId]
+        ,osp.DatePosted
+        ,osp.DatePostingRemoved
+        ,osp.RequisitionNumber
+        ,CASE WHEN osp.DatePostingRemoved IS NULL THEN 1 ELSE 0 END as isPositionOpen -- Indicates if the position is currently open (1) or closed (0)
+        ,CASE
+            WHEN DAY(DatePosted) between 1 and 6 THEN 'Math'
+            WHEN DAY(DatePosted) between 7 and 13 THEN 'English'
+            WHEN DAY(DatePosted) between 14 and 22 THEN 'Science'
+            WHEN DAY(DatePosted) between 23 and 31 THEN 'Social Studies'
+            else 'Other'
+        END
+            AS AssignmentCategory -- Placeholder for assignment category based on day of month
+        ,CASE
+            WHEN DAY(DatePosted) between 1 and 6 THEN 'High'
+            WHEN DAY(DatePosted) between 7 and 13 THEN 'Middle'
+            WHEN DAY(DatePosted) between 14 and 22 THEN 'Elementary'
+            WHEN DAY(DatePosted) between 23 and 31 THEN 'Junior High'
+            else 'Other'
+        END AS Segment -- Placeholder for segment based on day of month
+        ,scd.CodeValue AS AssignmentType -- Staff classification descriptor value
+        ,school.[NameOfInstitution] AS Campus -- Name of the institution (Campus)
+        ,school.[EducationOrganizationId] AS SchoolId -- Education Organization ID for the school
+        -- Handle district-level vacancies by using district name/ID if school is null
+        ,CASE WHEN lea.[NameOfInstitution] IS NULL THEN school.[NameOfInstitution] ELSE lea.[NameOfInstitution] END AS District
+        ,CASE WHEN lea.[EducationOrganizationId] IS NULL THEN school.[EducationOrganizationId] ELSE lea.[EducationOrganizationId] END AS LEAId
+        -- Calculate the SchoolYear based on the DatePosted:
+        -- If posted in Aug-Dec, it's the current year to next year (e.g., 2023-2024).
+        -- If posted in Jan-Jul, it's the previous year to current year (e.g., 2023-2024 for Jan 2024).
+        ,CASE
+            WHEN MONTH(osp.DatePosted) >= 8 THEN
+                CAST(YEAR(osp.DatePosted) AS VARCHAR(4)) + '-' + CAST(YEAR(osp.DatePosted) + 1 AS VARCHAR(4))
+            ELSE
+                CAST(YEAR(osp.DatePosted) - 1 AS VARCHAR(4)) + '-' + CAST(YEAR(osp.DatePosted) AS VARCHAR(4))
+        END AS SchoolYear
+        -- Determine the initial session name based on the DatePosted month ranges
+        ,CASE
+            WHEN MONTH(osp.DatePosted) BETWEEN 8 AND 10 THEN 'Fall' -- Aug, Sept, Oct
+            WHEN MONTH(osp.DatePosted) IN (11, 12, 1) THEN 'Winter' -- Nov, Dec, Jan
+            WHEN MONTH(osp.DatePosted) BETWEEN 2 AND 4 THEN 'Spring' -- Feb, March, April
+            WHEN MONTH(osp.DatePosted) BETWEEN 5 AND 7 THEN 'Summer' -- May, June, July
+            ELSE 'Unknown'
+        END AS InitialSessionName
+        -- Assign an order to the initial session for comparison
+        ,CASE
+            WHEN MONTH(osp.DatePosted) BETWEEN 8 AND 10 THEN 1 -- Fall
+            WHEN MONTH(osp.DatePosted) IN (11, 12, 1) THEN 2 -- Winter
+            WHEN MONTH(osp.DatePosted) BETWEEN 2 AND 4 THEN 3 -- Spring
+            WHEN MONTH(osp.DatePosted) BETWEEN 5 AND 7 THEN 4 -- Summer
+            ELSE 0 -- Unknown or unhandled case
+        END AS InitialSessionOrder
+        ,osp.LastModifiedDate AS LastRefreshed
+    FROM [EdFi_Ods_Populated_Template].[edfi].[OpenStaffPosition] AS osp
+        LEFT JOIN  [EdFi_Ods_Populated_Template].[edfi].[EducationOrganization] AS eo
+            ON osp.EducationOrganizationId = eo.EducationOrganizationId
+        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[EducationOrganization] AS school
+            ON school.EducationOrganizationId = osp.EducationOrganizationId
+        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[School] AS SchoolLEA
+            ON SchoolLEA.SchoolId = osp.EducationOrganizationId
+        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[EducationOrganization] AS lea
+            ON lea.EducationOrganizationId = SchoolLEA.LocalEducationAgencyId
+        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS scd
+            ON scd.DescriptorId = osp.StaffClassificationDescriptorId
+),
+-- CTE to define all academic sessions and their respective orders
+AllSessions AS (
+    SELECT 'Fall' AS SessionName, 1 AS SessionOrder
+    UNION ALL SELECT 'Winter', 2
+    UNION ALL SELECT 'Spring', 3
+    UNION ALL SELECT 'Summer', 4
+)
+-- First part of the UNION ALL:
+-- Selects open positions and cross-joins them with all sessions
+-- that are on or after their initial posting session within the same school year.
+SELECT
+    vb.[EducationOrganizationId]
+    ,vb.DatePosted
+    ,vb.DatePostingRemoved
+    ,vb.RequisitionNumber
+    ,vb.isPositionOpen
+    ,vb.AssignmentCategory
+    ,vb.Segment
+    ,vb.AssignmentType
+    ,vb.Campus
+    ,vb.SchoolId
+    ,vb.District
+    ,vb.LEAId
+    ,vb.SchoolYear
+    ,s.SessionName AS Session -- The session name from the AllSessions CTE
+    ,vb.LastRefreshed -- Included LastRefreshed in the final select
+FROM VacancyBase AS vb
+INNER JOIN AllSessions AS s
+    ON vb.isPositionOpen = 1 AND s.SessionOrder >= vb.InitialSessionOrder
 
-FROM [EdFi_Ods_Populated_Template].[edfi].[StudentSchoolAssociation] as ssa -- starting with studentSchool because it contains entry/exit dates to enable historical view
-	LEFT JOIN   [EdFi_Ods_Populated_Template].[edfi].[Student] AS stud --then adding student details for enrollment
-		ON ssa.StudentUSI = stud.StudentUSI
-	LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[EducationOrganization] AS school --then seoa joined to school to get School Name
-		on school.EducationOrganizationId = ssa.SchoolId
-	LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[School] AS SchoolLEA --now join school to get associated LEA
-		ON SchoolLEA.SchoolId = ssa.SchoolId
-	LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[EducationOrganization] AS lea --finally join seoa again to get LEA Name
-		ON lea.EducationOrganizationId = SchoolLEA.LocalEducationAgencyId
-	LEFT JOIN  [EdFi_Ods_Populated_Template].[edfi].[StudentEducationOrganizationAssociationRace] AS studRace --get race association
-		ON StudRace.EducationOrganizationId = lea.EducationOrganizationId AND StudRace.StudentUSI = ssa.StudentUSI -- race per student per school
-	LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] as r
-		ON r.DescriptorId = studRace.RaceDescriptorId
+UNION ALL
+
+-- Second part of the UNION ALL:
+-- Selects closed positions and only includes the row for their initial posting session.
+SELECT
+    vb.[EducationOrganizationId]
+    ,vb.DatePosted
+    ,vb.DatePostingRemoved
+    ,vb.RequisitionNumber
+    ,vb.isPositionOpen
+    ,vb.AssignmentCategory
+    ,vb.Segment
+    ,vb.AssignmentType
+    ,vb.Campus
+    ,vb.SchoolId
+    ,vb.District
+    ,vb.LEAId
+    ,vb.SchoolYear
+    ,vb.InitialSessionName AS Session -- The initial session name for closed positions
+    ,vb.LastRefreshed -- Included LastRefreshed in the final select
+FROM VacancyBase AS vb
+WHERE vb.isPositionOpen = 0;
