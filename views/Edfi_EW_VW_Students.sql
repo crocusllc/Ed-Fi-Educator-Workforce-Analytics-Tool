@@ -5,9 +5,9 @@ SELECT
 	,ssa.[EntryDate]
 	,'' AS SchoolYear
 	,ssa.[ExitWithdrawDate]
-	,school.[NameOfInstitution] AS SchoolName
+	,school.[NameOfInstitution] AS Campus
 	,school.[EducationOrganizationId] AS SchoolId
-	,lea.[NameOfInstitution] AS LEAName
+	,lea.[NameOfInstitution] AS District
 	,lea.[EducationOrganizationId] AS LEAId
 	,r.[ShortDescription] AS RaceEthnic
 
