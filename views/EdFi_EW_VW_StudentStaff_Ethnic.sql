@@ -1,4 +1,4 @@
-
+CREATE VIEW vw_StudentStaff_demographics AS
  With students as ( 
  SELECT distinct
       [StudentUSI] as ID
