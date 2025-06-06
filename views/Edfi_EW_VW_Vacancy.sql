@@ -5,7 +5,11 @@ WITH VacancyBase AS (
         ,osp.DatePosted
         ,osp.DatePostingRemoved
         ,osp.RequisitionNumber
-        ,CASE WHEN osp.DatePostingRemoved IS NULL THEN 1 ELSE 0 END as isPositionOpen -- Indicates if the position is currently open (1) or closed (0)
+        ,CASE -- Indicates if the position is currently open (RequisitionNumber) or closed (Null)
+              --to allow for distict counts of vacancies when agregating by Year
+            WHEN osp.DatePostingRemoved IS NULL THEN RequisitionNumber 
+            ELSE NULL 
+        END as isPositionOpen 
         ,CASE
             WHEN DAY(DatePosted) between 1 and 6 THEN 'Math'
             WHEN DAY(DatePosted) between 7 and 13 THEN 'English'
@@ -93,7 +97,7 @@ SELECT
     ,vb.LastRefreshed -- Included LastRefreshed in the final select
 FROM VacancyBase AS vb
 INNER JOIN AllSessions AS s
-    ON vb.isPositionOpen = 1 AND s.SessionOrder >= vb.InitialSessionOrder
+    ON vb.isPositionOpen IS NOT NULL  AND s.SessionOrder >= vb.InitialSessionOrder
 
 UNION ALL
 
@@ -116,4 +120,4 @@ SELECT
     ,vb.InitialSessionName AS Session -- The initial session name for closed positions
     ,vb.LastRefreshed -- Included LastRefreshed in the final select
 FROM VacancyBase AS vb
-WHERE vb.isPositionOpen = 0;
+WHERE vb.isPositionOpen IS NULL;
