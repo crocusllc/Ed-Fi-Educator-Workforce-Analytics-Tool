@@ -63,7 +63,7 @@ VacancyBase AS (
         END AS InitialSessionName
          */
         -- Assign an order to the initial session for comparison
-        ,ss.SessionName AS InitialSessionName
+        ,LEFT(sd.CodeValue,len(sd.CodeValue)-9) AS InitialSessionName
         ,CASE
             WHEN ss.SessionName = 'Fall'  THEN 1 -- Fall
             WHEN ss.SessionName = 'Winter' THEN 2 -- Winter
@@ -88,6 +88,8 @@ VacancyBase AS (
         LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Session] AS ss --Use school session based on vacancy date posted
             ON ss.SchoolId = osp.EducationOrganizationId 
                 AND osp.DatePosted between ss.BeginDate and ss.EndDate
+        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS sd
+            ON sd.DescriptorId = ss.TermDescriptorId    
 ),
 -- CTE to define all academic sessions and their respective orders
 --commenting out Winter and Spring since not present in the Session data
