@@ -62,8 +62,9 @@ VacancyBase AS (
             ELSE 'Unknown'
         END AS InitialSessionName
          */
-        -- Assign an order to the initial session for comparison
+    --We want just the Term name, so removing "Semester" from the Descriptor Value
         ,LEFT(sd.CodeValue,len(sd.CodeValue)-9) AS InitialSessionName
+    -- Assign an order to the initial session for comparison
         ,CASE
             WHEN ss.SessionName = 'Fall'  THEN 1 -- Fall
             WHEN ss.SessionName = 'Winter' THEN 2 -- Winter
@@ -85,9 +86,11 @@ VacancyBase AS (
             ON lea.EducationOrganizationId = SchoolLEA.LocalEducationAgencyId
         LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS scd
             ON scd.DescriptorId = osp.StaffClassificationDescriptorId
-        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Session] AS ss --Use school session based on vacancy date posted
+    --Use school session based on vacancy date posted
+        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Session] AS ss 
             ON ss.SchoolId = osp.EducationOrganizationId 
                 AND osp.DatePosted between ss.BeginDate and ss.EndDate
+    --Use Term Descriptor Value
         LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS sd
             ON sd.DescriptorId = ss.TermDescriptorId    
 ),
