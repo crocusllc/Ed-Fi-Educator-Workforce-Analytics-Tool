@@ -4,16 +4,24 @@ WITH RECURSIVE_SCHOOL_YEARS AS (
     SELECT
         t.StaffUSI AS TeacherID,
         t.BeginDate AS StartDate,
-        t.EndDate,
+       CASE
+            WHEN t.EndDate IS NULL THEN GETDATE()
+            ELSE t.EndDate
+        END
+        AS EndDate,
         -- Calculate the start year of the school year based on StartDate (August 1st to July 31st)
         CASE
             WHEN MONTH(t.BeginDate) >= 8 THEN YEAR(t.BeginDate)
             ELSE YEAR(t.BeginDate) - 1
         END AS SchoolYearStart,
         -- Calculate the end year of the school year based on EndDate (August 1st to July 31st)
+        -->>Added additional logic to ensure that the SchoolYearEnd field is never NULL.  
+        -->>When no end date present, use current date
         CASE
-            WHEN MONTH(t.EndDate) >= 8 THEN YEAR(t.EndDate)
-            ELSE YEAR(t.EndDate) - 1
+            WHEN MONTH(t.EndDate) >= 8 AND t.EndDate is not null THEN YEAR(t.EndDate)
+            WHEN MONTH(GETDATE()) >= 8 AND t.EndDate is null THEN YEAR(GETDATE())
+            WHEN MONTH(t.EndDate) < 8 AND t.EndDate is not null THEN YEAR(t.EndDate)-1
+            WHEN MONTH(GETDATE()) < 8 AND t.EndDate is null THEN YEAR(GETDATE())-1
         END AS SchoolYearEnd
     FROM
         [EdFi_Ods_Populated_Template].[edfi].[StaffEducationOrganizationAssignmentAssociation] t
@@ -33,19 +41,25 @@ WITH RECURSIVE_SCHOOL_YEARS AS (
         -- Continue recursion as long as the current school year (plus 1 for the next iteration)
         -- is less than or equal to the calculated end school year for the assignment.
         rsy.SchoolYearStart + 1 <= rsy.SchoolYearEnd
-)
+),
+
+VacancyBase AS --Created main Select statement as another With so that it can be queried for Retention logic
+(
 SELECT
     rsy.TeacherID,
     -- Format the school year as 'YYYY-YYYY+1' based on the August-July definition
     CAST(rsy.SchoolYearStart AS NVARCHAR(4)) + '-' + CAST(rsy.SchoolYearStart + 1 AS NVARCHAR(4)) AS SchoolYear,
+    rsy.SchoolYearStart AS SchoolYearStart,--Added SchoolYearStart as it's own field so that it can be used in Retention calculations
     seoaa.[BeginDate],
     seoaa.[EducationOrganizationId],
     seoaa.[EndDate],
     -- Calculate nonRetentionYear based on the June-May definition
+    --Added logic to ensure that nonRetentionYear only populated during the year not retained, to support non-retention logic
     CASE
         WHEN seoaa.[EndDate] IS NULL THEN NULL
-        WHEN MONTH(seoaa.[EndDate]) >= 6 THEN YEAR(seoaa.[EndDate])
-        ELSE YEAR(seoaa.[EndDate]) - 1
+        WHEN MONTH(seoaa.[EndDate]) >= 6 AND YEAR(seoaa.[EndDate]) = (rsy.SchoolYearStart + 1) THEN YEAR(seoaa.[EndDate])
+        WHEN MONTH(seoaa.[EndDate]) < 6 AND YEAR(seoaa.[EndDate]) = (rsy.SchoolYearStart) THEN YEAR(seoaa.[EndDate])
+        ELSE NULL
     END AS nonRetentionYear,
     scd.CodeValue AS StaffAssignmentType,
     CASE
@@ -84,7 +98,8 @@ FROM
 INNER JOIN [EdFi_Ods_Populated_Template].[edfi].[StaffEducationOrganizationAssignmentAssociation] AS seoaa
     ON rsy.TeacherID = seoaa.StaffUSI
     AND rsy.StartDate = seoaa.BeginDate
-    AND (rsy.EndDate = seoaa.EndDate OR (rsy.EndDate IS NULL AND seoaa.EndDate IS NULL)) -- Handle NULL EndDates in join
+    --Removing join to handle null field end dates, since those don't exist anymore
+    --AND (rsy.EndDate = seoaa.EndDate /*OR (rsy.EndDate IS NULL AND seoaa.EndDate IS NULL)*/) -- Handle NULL EndDates in join
 -- Add staff table for demographics
 LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Staff] AS s
     ON s.StaffUSI = seoaa.StaffUSI
@@ -124,4 +139,24 @@ WHERE
     (rsy.EndDate IS NULL OR DATEFROMPARTS(rsy.SchoolYearStart, 8, 1) <= rsy.EndDate)
     AND
     (DATEFROMPARTS(rsy.SchoolYearStart + 1, 7, 31) >= rsy.StartDate)
+) 
 
+
+
+SELECT vb.*,
+--Adding this field to support Retention Charts
+--Need to do some more testing on this.  I think comparisons need to be tweaked
+   CASE
+        WHEN vb.nonRetentionYear IS NULL THEN 'RetainedDistrictAndSchool' 
+        WHEN vb.nonRetentionYear IS NOT NULL 
+            AND (
+            SELECT District 
+            FROM VacancyBase 
+            WHERE TeacherID = vb.TeacherID 
+            AND SchoolYearStart = vb.SchoolYearStart-1) = vb.District 
+            THEN 'RetainedDistrictNotSchool'  
+        ELSE 'NoLongerInDistrict'
+    END
+AS RetentionStatus
+
+FROM VacancyBase AS vb
