@@ -1,15 +1,5 @@
 CREATE VIEW vw_VacancyData AS
-WITH 
-/* Possible solution for adding in session dates at the district level
-1. Create subquery that contains all School sessions and union with district IDs, taking most common start and end dates
-2. Join Subquery instead of Session to the base view
-SchoolSessions as (
-Select * from Session
-Union ALL
---select all districts from edorg and add in common session begin and end dates
-),
-*/
-VacancyBase AS (
+WITH VacancyBase AS (
     SELECT
         osp.[EducationOrganizationId]
         ,osp.DatePosted
@@ -18,8 +8,7 @@ VacancyBase AS (
         ,CASE -- Indicates if the position is currently open (RequisitionNumber) or closed (Null)
               --to allow for distict counts of vacancies when agregating by Year
             WHEN osp.DatePostingRemoved IS NULL THEN RequisitionNumber 
-            ELSE NULL 
-        END as isPositionOpen 
+            ELSE NULL END as isPositionOpen 
         ,CASE
             WHEN DAY(DatePosted) between 1 and 6 THEN 'Math'
             WHEN DAY(DatePosted) between 7 and 13 THEN 'English'
@@ -28,15 +17,16 @@ VacancyBase AS (
             else 'Other'
         END
             AS AssignmentCategory -- Placeholder for assignment category based on day of month
-        ,CASE
+     /*   ,CASE
             WHEN DAY(DatePosted) between 1 and 6 THEN 'High'
             WHEN DAY(DatePosted) between 7 and 13 THEN 'Middle'
             WHEN DAY(DatePosted) between 14 and 22 THEN 'Elementary'
             WHEN DAY(DatePosted) between 23 and 31 THEN 'Junior High'
             else 'Other'
-        END AS Segment -- Placeholder for segment based on day of month
+        END AS Segment -- Placeholder for segment based on day of month*/
         ,scd.CodeValue AS AssignmentType -- Staff classification descriptor value
         ,school.[NameOfInstitution] AS Campus -- Name of the institution (Campus)
+        ,scdesc.CodeValue AS Segment
         ,school.[EducationOrganizationId] AS SchoolId -- Education Organization ID for the school
         -- Handle district-level vacancies by using district name/ID if school is null
         ,CASE WHEN lea.[NameOfInstitution] IS NULL THEN school.[NameOfInstitution] ELSE lea.[NameOfInstitution] END AS District
@@ -50,10 +40,7 @@ VacancyBase AS (
             ELSE
                 CAST(YEAR(osp.DatePosted) - 1 AS VARCHAR(4)) + '-' + CAST(YEAR(osp.DatePosted) AS VARCHAR(4))
         END AS SchoolYear
-        /*
         -- Determine the initial session name based on the DatePosted month ranges
-        --Currently commented out because we are using sessions
-        --However, hardcoding months may be a better indicator of when positions are opened
         ,CASE
             WHEN MONTH(osp.DatePosted) BETWEEN 8 AND 10 THEN 'Fall' -- Aug, Sept, Oct
             WHEN MONTH(osp.DatePosted) IN (11, 12, 1) THEN 'Winter' -- Nov, Dec, Jan
@@ -61,19 +48,14 @@ VacancyBase AS (
             WHEN MONTH(osp.DatePosted) BETWEEN 5 AND 7 THEN 'Summer' -- May, June, July
             ELSE 'Unknown'
         END AS InitialSessionName
-         */
-    --We want just the Term name, so removing "Semester" from the Descriptor Value
-        ,LEFT(sd.CodeValue,len(sd.CodeValue)-9) AS InitialSessionName
-    -- Assign an order to the initial session for comparison
+        -- Assign an order to the initial session for comparison
         ,CASE
-            WHEN ss.SessionName = 'Fall'  THEN 1 -- Fall
-            WHEN ss.SessionName = 'Winter' THEN 2 -- Winter
-            WHEN ss.SessionName = 'Spring'  THEN 3 -- Spring
-            WHEN ss.SessionName = 'Summer' THEN 4 -- Summer
+            WHEN MONTH(osp.DatePosted) BETWEEN 8 AND 10 THEN 1 -- Fall
+            WHEN MONTH(osp.DatePosted) IN (11, 12, 1) THEN 2 -- Winter
+            WHEN MONTH(osp.DatePosted) BETWEEN 2 AND 4 THEN 3 -- Spring
+            WHEN MONTH(osp.DatePosted) BETWEEN 5 AND 7 THEN 4 -- Summer
             ELSE 0 -- Unknown or unhandled case
         END AS InitialSessionOrder
-       
-
         ,osp.LastModifiedDate AS LastRefreshed
     FROM [EdFi_Ods_Populated_Template].[edfi].[OpenStaffPosition] AS osp
         LEFT JOIN  [EdFi_Ods_Populated_Template].[edfi].[EducationOrganization] AS eo
@@ -86,21 +68,18 @@ VacancyBase AS (
             ON lea.EducationOrganizationId = SchoolLEA.LocalEducationAgencyId
         LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS scd
             ON scd.DescriptorId = osp.StaffClassificationDescriptorId
-    --Use school session based on vacancy date posted
-        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Session] AS ss 
-            ON ss.SchoolId = osp.EducationOrganizationId 
-                AND osp.DatePosted between ss.BeginDate and ss.EndDate
-    --Use Term Descriptor Value
-        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS sd
-            ON sd.DescriptorId = ss.TermDescriptorId    
+        --Add School Category Descriptor
+        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[SchoolCategory] AS schoolCat
+            ON schoolCat.SchoolId = osp.EducationOrganizationId
+        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] as scdesc
+            ON scdesc.DescriptorId = schoolCat.SchoolCategoryDescriptorId
 ),
 -- CTE to define all academic sessions and their respective orders
---commenting out Winter and Spring since not present in the Session data
 AllSessions AS (
     SELECT 'Fall' AS SessionName, 1 AS SessionOrder
-  -- UNION ALL SELECT 'Winter', 2
+    UNION ALL SELECT 'Winter', 2
     UNION ALL SELECT 'Spring', 3
-  -- UNION ALL SELECT 'Summer', 4
+    UNION ALL SELECT 'Summer', 4
 )
 -- First part of the UNION ALL:
 -- Selects open positions and cross-joins them with all sessions
@@ -123,8 +102,7 @@ SELECT
     ,vb.LastRefreshed -- Included LastRefreshed in the final select
 FROM VacancyBase AS vb
 INNER JOIN AllSessions AS s
-        --Join session on SessionName as well
-    ON vb.isPositionOpen IS NOT NULL  AND s.SessionOrder >= vb.InitialSessionOrder AND s.SessionName = vb.InitialSessionName
+    ON vb.isPositionOpen IS NOT NULL  AND s.SessionOrder >= vb.InitialSessionOrder
 
 UNION ALL
 
@@ -147,4 +125,4 @@ SELECT
     ,vb.InitialSessionName AS Session -- The initial session name for closed positions
     ,vb.LastRefreshed -- Included LastRefreshed in the final select
 FROM VacancyBase AS vb
-WHERE vb.isPositionOpen IS NULL
+WHERE vb.isPositionOpen IS NULL;
