@@ -62,13 +62,14 @@ SELECT
         ELSE NULL
     END AS nonRetentionYear,
     scd.CodeValue AS StaffAssignmentType,
-    CASE
+ /*   CASE
         WHEN DAY(seoaa.BeginDate) BETWEEN 1 AND 6 THEN 'Math'
         WHEN DAY(seoaa.BeginDate) BETWEEN 7 AND 13 THEN 'English'
         WHEN DAY(seoaa.BeginDate) BETWEEN 14 AND 22 THEN 'Science'
         WHEN DAY(seoaa.BeginDate) BETWEEN 23 AND 31 THEN 'Social Studies'
         ELSE 'Other'
-    END AS AssignmentSubjectCategory,
+    END */
+    asd.CodeValue AS AssignmentSubjectCategory,
 /*    CASE
         WHEN DAY(seoaa.BeginDate) BETWEEN 1 AND 6 THEN 'High'
         WHEN DAY(seoaa.BeginDate) BETWEEN 7 AND 13 THEN 'Middle'
@@ -132,6 +133,12 @@ LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS r
 -- Add staff classification descriptor
 LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS scd
     ON scd.DescriptorId = seoaa.StaffClassificationDescriptorId
+-- Add Academic Subject
+LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[StaffSchoolAssociationAcademicSubject] AS ssaas
+    ON ssaas.SchoolId = seoaa.EducationOrganizationId AND ssaas.StaffUSI = seoaa.StaffUSI
+LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS asd
+    ON asd.DescriptorId = ssaas.AcademicSubjectDescriptorId
+
 -- Join StaffCredential and Credential tables
 LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[StaffCredential] AS sc
     ON sc.StaffUSI = s.StaffUSI
