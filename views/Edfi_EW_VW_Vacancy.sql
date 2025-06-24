@@ -7,16 +7,16 @@ WITH VacancyBase AS (
         ,osp.RequisitionNumber
         ,CASE -- Indicates if the position is currently open (RequisitionNumber) or closed (Null)
               --to allow for distict counts of vacancies when agregating by Year
-            WHEN osp.DatePostingRemoved IS NULL THEN RequisitionNumber 
+            WHEN osp.DatePostingRemoved IS NULL THEN osp.RequisitionNumber 
             ELSE NULL END as isPositionOpen 
-        ,CASE
+        /*,CASE
             WHEN DAY(DatePosted) between 1 and 6 THEN 'Math'
             WHEN DAY(DatePosted) between 7 and 13 THEN 'English'
             WHEN DAY(DatePosted) between 14 and 22 THEN 'Science'
             WHEN DAY(DatePosted) between 23 and 31 THEN 'Social Studies'
             else 'Other'
-        END
-            AS AssignmentCategory -- Placeholder for assignment category based on day of month
+        END*/
+        ,ospasd.CodeValue  AS AssignmentCategory --Academic Subject of open Position
      /*   ,CASE
             WHEN DAY(DatePosted) between 1 and 6 THEN 'High'
             WHEN DAY(DatePosted) between 7 and 13 THEN 'Middle'
@@ -71,8 +71,14 @@ WITH VacancyBase AS (
         --Add School Category Descriptor
         LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[SchoolCategory] AS schoolCat
             ON schoolCat.SchoolId = osp.EducationOrganizationId
-        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] as scdesc
+        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS  scdesc
             ON scdesc.DescriptorId = schoolCat.SchoolCategoryDescriptorId
+        --Add Academic Subject Category "Assignment Category"
+        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[OpenStaffPositionAcademicSubject] AS ospas
+            ON ospas.EducationOrganizationId = osp.EducationOrganizationId AND ospas.RequisitionNumber = osp.RequisitionNumber
+        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS  ospasd
+            ON ospasd.DescriptorId = ospas.AcademicSubjectDescriptorId
+
 ),
 -- CTE to define all academic sessions and their respective orders
 AllSessions AS (
