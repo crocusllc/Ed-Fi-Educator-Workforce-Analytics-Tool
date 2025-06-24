@@ -92,12 +92,21 @@ SELECT
     s.[FirstName],
     s.[LastSurname],
     s.[YearsOfPriorTeachingExperience],
+    s.BirthDate,
     CASE
-        WHEN YEAR(seoaa.BeginDate) = rsy.SchoolYearStart  AND  MONTH(seoaa.BeginDate) >= 6 THEN 'New Hire'
-        WHEN YEAR(seoaa.BeginDate) = rsy.SchoolYearStart+1  AND  MONTH(seoaa.BeginDate) < 6 THEN 'New Hire'
-        WHEN seoeae.[TenureTrack] = 1 THEN 'Near Retirement'
-        ELSE NULL
-    END AS PopulationType
+        WHEN (CONVERT(int,CONVERT(char(8),GETDATE(),112))-CONVERT(char(8),s.BirthDate,112))/10000 >= 56 THEN 1
+        ELSE 0
+    END AS NearRetirement,
+    CASE
+        WHEN YEAR(seoaa.BeginDate) = rsy.SchoolYearStart  AND  MONTH(seoaa.BeginDate) >= 6 THEN 1
+        WHEN YEAR(seoaa.BeginDate) = rsy.SchoolYearStart+1  AND  MONTH(seoaa.BeginDate) < 6 THEN 1
+        ELSE 0
+    END AS NewHireSchool,
+    CASE --We would need to check previous employment at district.  Using what Mechanism?
+        WHEN YEAR(seoaa.BeginDate) = rsy.SchoolYearStart  AND  MONTH(seoaa.BeginDate) >= 6 THEN 1
+        WHEN YEAR(seoaa.BeginDate) = rsy.SchoolYearStart+1  AND  MONTH(seoaa.BeginDate) < 6 THEN 1
+        ELSE 0
+    END AS NewHireDistrict
 FROM
     RECURSIVE_SCHOOL_YEARS rsy
 -- Join back to the main StaffEducationOrganizationAssignmentAssociation table to get other details
