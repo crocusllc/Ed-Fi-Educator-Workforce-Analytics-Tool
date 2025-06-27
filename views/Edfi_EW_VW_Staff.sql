@@ -11,7 +11,7 @@ WITH RECURSIVE_SCHOOL_YEARS AS (
         AS EndDate,
         -- Calculate the start year of the school year based on StartDate (August 1st to July 31st)
         CASE
-            WHEN MONTH(t.BeginDate) >= 8 THEN YEAR(t.BeginDate)
+            WHEN MONTH(t.BeginDate) >= 6 THEN YEAR(t.BeginDate) --changing this to 6 from 8: hired in summer for comming school year.
             ELSE YEAR(t.BeginDate) - 1
         END AS SchoolYearStart,
         -- Calculate the end year of the school year based on EndDate (August 1st to July 31st)
@@ -57,8 +57,8 @@ SELECT
     --Added logic to ensure that nonRetentionYear only populated during the year not retained, to support non-retention logic
     CASE
         WHEN seoaa.[EndDate] IS NULL THEN NULL
-        WHEN MONTH(seoaa.[EndDate]) >= 6 AND YEAR(seoaa.[EndDate]) = (rsy.SchoolYearStart + 1) THEN YEAR(seoaa.[EndDate])
-        WHEN MONTH(seoaa.[EndDate]) < 6 AND YEAR(seoaa.[EndDate]) = (rsy.SchoolYearStart) THEN YEAR(seoaa.[EndDate])
+        WHEN MONTH(seoaa.[EndDate]) >= 7 AND YEAR(seoaa.[EndDate]) = (rsy.SchoolYearStart) THEN YEAR(seoaa.[EndDate])
+        WHEN MONTH(seoaa.[EndDate]) < 7 AND YEAR(seoaa.[EndDate]) = (rsy.SchoolYearStart + 1) THEN YEAR(seoaa.[EndDate])-1
         ELSE NULL
     END AS nonRetentionYear,
     scd.CodeValue AS StaffAssignmentType,
@@ -94,19 +94,11 @@ SELECT
     s.[YearsOfPriorTeachingExperience],
     s.BirthDate,
     CASE
-        WHEN (CONVERT(int,CONVERT(char(8),GETDATE(),112))-CONVERT(char(8),s.BirthDate,112))/10000 >= 56 THEN 1
-        ELSE 0
-    END AS NearRetirement,
-    CASE
-        WHEN YEAR(seoaa.BeginDate) = rsy.SchoolYearStart  AND  MONTH(seoaa.BeginDate) >= 6 THEN 1
-        WHEN YEAR(seoaa.BeginDate) = rsy.SchoolYearStart+1  AND  MONTH(seoaa.BeginDate) < 6 THEN 1
-        ELSE 0
-    END AS NewHireSchool,
-    CASE --We would need to check previous employment at district.  Using what Mechanism?
-        WHEN YEAR(seoaa.BeginDate) = rsy.SchoolYearStart  AND  MONTH(seoaa.BeginDate) >= 6 THEN 1
-        WHEN YEAR(seoaa.BeginDate) = rsy.SchoolYearStart+1  AND  MONTH(seoaa.BeginDate) < 6 THEN 1
-        ELSE 0
-    END AS NewHireDistrict
+        WHEN (CONVERT(int,CONVERT(char(8),GETDATE(),112))-CONVERT(char(8),s.BirthDate,112))/10000 >= 56 THEN 'Near Retirement'
+        WHEN YEAR(seoaa.BeginDate) = rsy.SchoolYearStart  AND  MONTH(seoaa.BeginDate) >= 6 THEN 'New Hire'
+        WHEN YEAR(seoaa.BeginDate) = rsy.SchoolYearStart+1  AND  MONTH(seoaa.BeginDate) < 6 THEN 'New Hire'
+        ELSE NULL
+    END AS TenureStatus
 FROM
     RECURSIVE_SCHOOL_YEARS rsy
 -- Join back to the main StaffEducationOrganizationAssignmentAssociation table to get other details
@@ -186,9 +178,24 @@ SELECT vb.*,
             SELECT District 
             FROM VacancyBase 
             WHERE TeacherID = vb.TeacherID 
-            AND SchoolYearStart = vb.SchoolYearStart-1) = vb.District 
+            AND SchoolYearStart = vb.SchoolYearStart+1) = vb.District  -- if the district is the same in the next school year
             THEN 'RetainedDistrictNotSchool'  
-        ELSE 'NoLongerInDistrict'
+       WHEN vb.nonRetentionYear IS NOT NULL 
+            AND (
+            SELECT District 
+            FROM VacancyBase 
+            WHERE TeacherID = vb.TeacherID 
+            AND SchoolYearStart = vb.SchoolYearStart+1) != vb.District  -- if the district is not the same in the next school year
+            THEN 'NoLongerInDistrict'  
+        WHEN vb.nonRetentionYear IS NOT NULL 
+            AND (
+            SELECT District 
+            FROM VacancyBase 
+            WHERE TeacherID = vb.TeacherID 
+            AND SchoolYearStart = vb.SchoolYearStart+1 ) IS NULL --if the educator is no longer present in the data set in the next school year
+            THEN 'NoLongerInCounty'        
+
+        ELSE 'ERROR'
     END
 AS RetentionStatus
 
