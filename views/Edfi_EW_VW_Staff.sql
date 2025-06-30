@@ -15,8 +15,7 @@ WITH RECURSIVE_SCHOOL_YEARS AS (
             ELSE YEAR(t.BeginDate) - 1
         END AS SchoolYearStart,
         -- Calculate the end year of the school year based on EndDate (August 1st to July 31st)
-        -->>Added additional logic to ensure that the SchoolYearEnd field is never NULL.  
-        -->>When no end date present, use current date
+        --Ensure that the SchoolYearEnd field is never NULL by filling current Year.  
         CASE
             WHEN MONTH(t.EndDate) >= 8 AND t.EndDate is not null THEN YEAR(t.EndDate)
             WHEN MONTH(GETDATE()) >= 8 AND t.EndDate is null THEN YEAR(GETDATE())
@@ -43,13 +42,15 @@ WITH RECURSIVE_SCHOOL_YEARS AS (
         rsy.SchoolYearStart + 1 <= rsy.SchoolYearEnd
 ),
 
-VacancyBase AS --Created main Select statement as another With so that it can be queried for Retention logic
+VacancyBase AS --Main select statement to be queried for Retention logic
 (
 SELECT
     rsy.TeacherID,
     -- Format the school year as 'YYYY-YYYY+1' based on the August-July definition
     CAST(rsy.SchoolYearStart AS NVARCHAR(4)) + '-' + CAST(rsy.SchoolYearStart + 1 AS NVARCHAR(4)) AS SchoolYear,
+    CAST(rsy.SchoolYearStart+1 AS NVARCHAR(4)) + '-' + CAST(rsy.SchoolYearStart + 2 AS NVARCHAR(4)) AS RetainedSchoolYear,
     rsy.SchoolYearStart AS SchoolYearStart,--Added SchoolYearStart as it's own field so that it can be used in Retention calculations
+    rsy.SchoolYearStart + 1 AS RetainedSchoolYearStart,    
     seoaa.[BeginDate],
     seoaa.[EducationOrganizationId],
     seoaa.[EndDate],
@@ -62,21 +63,7 @@ SELECT
         ELSE NULL
     END AS nonRetentionYear,
     scd.CodeValue AS StaffAssignmentType,
- /*   CASE
-        WHEN DAY(seoaa.BeginDate) BETWEEN 1 AND 6 THEN 'Math'
-        WHEN DAY(seoaa.BeginDate) BETWEEN 7 AND 13 THEN 'English'
-        WHEN DAY(seoaa.BeginDate) BETWEEN 14 AND 22 THEN 'Science'
-        WHEN DAY(seoaa.BeginDate) BETWEEN 23 AND 31 THEN 'Social Studies'
-        ELSE 'Other'
-    END */
     asd.CodeValue AS AssignmentSubjectCategory,
-/*    CASE
-        WHEN DAY(seoaa.BeginDate) BETWEEN 1 AND 6 THEN 'High'
-        WHEN DAY(seoaa.BeginDate) BETWEEN 7 AND 13 THEN 'Middle'
-        WHEN DAY(seoaa.BeginDate) BETWEEN 14 AND 22 THEN 'Elementary'
-        WHEN DAY(seoaa.BeginDate) BETWEEN 23 AND 31 THEN 'Junior High'
-        ELSE 'Other'
-    END AS SchoolSegment,*/
     cred.ShortDescription AS CredentialType,
     school.[NameOfInstitution] AS Campus, -- Name used in the Dashboard
     school.[EducationOrganizationId] AS SchoolId,
@@ -106,8 +93,6 @@ FROM
 INNER JOIN [EdFi_Ods_Populated_Template].[edfi].[StaffEducationOrganizationAssignmentAssociation] AS seoaa
     ON rsy.TeacherID = seoaa.StaffUSI
     AND rsy.StartDate = seoaa.BeginDate
-    --Removing join to handle null field end dates, since those don't exist anymore
-    --AND (rsy.EndDate = seoaa.EndDate /*OR (rsy.EndDate IS NULL AND seoaa.EndDate IS NULL)*/) -- Handle NULL EndDates in join
 -- Add staff table for demographics
 LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Staff] AS s
     ON s.StaffUSI = seoaa.StaffUSI
@@ -166,8 +151,6 @@ WHERE
     (DATEFROMPARTS(rsy.SchoolYearStart + 1, 7, 31) >= rsy.StartDate)
 ) 
 
-
-
 SELECT vb.*,
 --Adding this field to support Retention Charts
 --Need to do some more testing on this.  I think comparisons need to be tweaked
@@ -198,5 +181,4 @@ SELECT vb.*,
         ELSE 'ERROR'
     END
 AS RetentionStatus
-
 FROM VacancyBase AS vb
