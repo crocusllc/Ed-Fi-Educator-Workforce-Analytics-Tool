@@ -10,6 +10,8 @@
 
 [Educator Workforce Data Gap Reivew](https://docs.google.com/spreadsheets/d/12mhD8d5I-8A229-BWit07rml3d7r3ahj588UzozWPhQ/edit?gid=193657921#gid=193657921)
 
+[Dashboard Documentation Doc](https://docs.google.com/document/d/1EpwuY-Eb0wrWbSgF43xtEX9bDNRA9BkvNGPdAAOMRhY)
+
 
 ## Ed-Fi Provided Documents
 [Ed-Fi Provided Educator Workforce sample data review](https://docs.google.com/document/d/1rDXUjz_qIeo30jjAcOhRjVjTajfMdeSHDK5L09m2Nag/edit?tab=t.0)
