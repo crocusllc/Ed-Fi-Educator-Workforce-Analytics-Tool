@@ -50,7 +50,7 @@ SCHOOL_YEARS_EXPANDED AS (
         sab.SchoolYearEnd - syn.YearOffset >= sab.SchoolYearStart
 ),
 
-VacancyBase AS --Main select statement to be queried for Retention logic
+STAFF_BASE  AS --Main select statement to be queried for Retention logic
 (
 SELECT
     sye.TeacherID,
@@ -97,57 +97,54 @@ FROM
     SCHOOL_YEARS_EXPANDED sye
 -- Join back to the main StaffEducationOrganizationAssignmentAssociation table to get other details
 -- Joining on TeacherID (StaffUSI), StartDate (BeginDate), and EndDate ensures we link to the correct assignment record.
-INNER JOIN [EdFi_Ods_Populated_Template].[edfi].[StaffEducationOrganizationAssignmentAssociation] AS seoaa
+INNER JOIN [edfi].[StaffEducationOrganizationAssignmentAssociation] AS seoaa
     ON sye.TeacherID = seoaa.StaffUSI
     AND sye.StartDate = seoaa.BeginDate
 -- Add staff table for demographics
-LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Staff] AS s
+LEFT JOIN [edfi].[Staff] AS s
     ON s.StaffUSI = seoaa.StaffUSI
 -- Add Staff Race
-LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[StaffRace] AS sr
+LEFT JOIN [edfi].[StaffRace] AS sr
     ON sr.StaffUSI = seoaa.StaffUSI
 -- Join to school to get School Name
-LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[EducationOrganization] AS school
+LEFT JOIN [edfi].[EducationOrganization] AS school
     ON school.EducationOrganizationId = seoaa.EducationOrganizationId
 -- Join school to get associated LEA
-LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[School] AS SchoolLEA
+LEFT JOIN [edfi].[School] AS SchoolLEA
     ON SchoolLEA.SchoolId = seoaa.EducationOrganizationId
 -- Join again to get LEA Name
-LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[EducationOrganization] AS lea
+LEFT JOIN [edfi].[EducationOrganization] AS lea
     ON lea.EducationOrganizationId = SchoolLEA.LocalEducationAgencyId
 --Add School Category Descriptor
-LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[SchoolCategory] AS schoolCat
+LEFT JOIN [edfi].[SchoolCategory] AS schoolCat
     ON schoolCat.SchoolId = seoaa.EducationOrganizationId
-LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] as scdesc
+LEFT JOIN [edfi].[Descriptor] as scdesc
     ON scdesc.DescriptorId = schoolCat.SchoolCategoryDescriptorId
 -- Add race descriptor
-LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS r
+LEFT JOIN [edfi].[Descriptor] AS r
     ON r.DescriptorId = sr.RaceDescriptorId
 -- Add staff classification descriptor
-LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS scd
+LEFT JOIN [edfi].[Descriptor] AS scd
     ON scd.DescriptorId = seoaa.StaffClassificationDescriptorId
 -- Add Academic Subject
-LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[StaffSchoolAssociationAcademicSubject] AS ssaas
+LEFT JOIN [edfi].[StaffSchoolAssociationAcademicSubject] AS ssaas
     ON ssaas.SchoolId = seoaa.EducationOrganizationId AND ssaas.StaffUSI = seoaa.StaffUSI
-LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS asd
+LEFT JOIN [edfi].[Descriptor] AS asd
     ON asd.DescriptorId = ssaas.AcademicSubjectDescriptorId
 
 -- Join StaffCredential and Credential tables
-LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[StaffCredential] AS sc
+LEFT JOIN [edfi].[StaffCredential] AS sc
     ON sc.StaffUSI = s.StaffUSI
-LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Credential] AS c
+LEFT JOIN [edfi].[Credential] AS c
     ON c.CredentialIdentifier = sc.CredentialIdentifier
 -- Add credential descriptor
-LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS cred
-    ON cred.DescriptorId = c.CredentialFieldDescriptorId
---Add Tenure Track Flag
-LEFT JOIN [EdFi_Ods_Populated_Template].[tpdm].[StaffEducationOrganizationEmploymentAssociationExtension] as seoeae
-    on seoeae.StaffUSI = seoaa.StaffUSI 
+LEFT JOIN [edfi].[Descriptor] AS cred
+    ON cred.DescriptorId = c.TeachingCredentialDescriptorId
 --School Location
-LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[EducationOrganizationAddress] AS eoa
+LEFT JOIN [edfi].[EducationOrganizationAddress] AS eoa
     ON eoa.EducationOrganizationId = seoaa.EducationOrganizationId 
 --LEA Location
-LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[EducationOrganizationAddress] AS eoaLEA
+LEFT JOIN [edfi].[EducationOrganizationAddress] AS eoaLEA
     ON eoaLEA.EducationOrganizationId = SchoolLEA.LocalEducationAgencyId
 WHERE
     -- Ensure that the generated school year actually overlaps with the teacher's assignment period.
@@ -158,34 +155,33 @@ WHERE
     (DATEFROMPARTS(sye.SchoolYearStart + 1, 7, 31) >= sye.StartDate)
 ) 
 
-SELECT vb.*,
+SELECT sb.*,
 --Adding this field to support Retention Charts
---Need to do some more testing on this.  I think comparisons need to be tweaked
    CASE
-        WHEN vb.nonRetentionYear IS NULL THEN 'RetainedDistrictAndSchool' 
-        WHEN vb.nonRetentionYear IS NOT NULL 
+        WHEN sb.nonRetentionYear IS NULL THEN 'RetainedDistrictAndSchool' 
+        WHEN sb.nonRetentionYear IS NOT NULL 
             AND (
             SELECT District 
-            FROM VacancyBase 
-            WHERE TeacherID = vb.TeacherID 
-            AND SchoolYearStart = vb.SchoolYearStart+1) = vb.District  -- if the district is the same in the next school year
+            FROM STAFF_BASE 
+            WHERE TeacherID = sb.TeacherID 
+            AND SchoolYearStart = sb.SchoolYearStart+1) = sb.District  -- if the district is the same in the next school year
             THEN 'RetainedDistrictNotSchool'  
-       WHEN vb.nonRetentionYear IS NOT NULL 
+       WHEN sb.nonRetentionYear IS NOT NULL 
             AND (
             SELECT District 
-            FROM VacancyBase 
-            WHERE TeacherID = vb.TeacherID 
-            AND SchoolYearStart = vb.SchoolYearStart+1) != vb.District  -- if the district is not the same in the next school year
+            FROM STAFF_BASE 
+            WHERE TeacherID = sb.TeacherID 
+            AND SchoolYearStart = sb.SchoolYearStart+1) != sb.District  -- if the district is not the same in the next school year
             THEN 'NoLongerInDistrict'  
-        WHEN vb.nonRetentionYear IS NOT NULL 
+        WHEN sb.nonRetentionYear IS NOT NULL 
             AND (
             SELECT District 
-            FROM VacancyBase 
-            WHERE TeacherID = vb.TeacherID 
-            AND SchoolYearStart = vb.SchoolYearStart+1 ) IS NULL --if the educator is no longer present in the data set in the next school year
+            FROM STAFF_BASE 
+            WHERE TeacherID = sb.TeacherID 
+            AND SchoolYearStart = sb.SchoolYearStart+1 ) IS NULL --if the educator is no longer present in the data set in the next school year
             THEN 'NoLongerInCounty'        
 
         ELSE 'ERROR'
     END
 AS RetentionStatus
-FROM VacancyBase AS vb
+FROM STAFF_BASE AS sb
