@@ -2,7 +2,19 @@ CREATE VIEW vw_Student AS
 
 WITH SCHOOL_YEAR_NUMBERS AS (
     SELECT 0 AS YearOffset
-    UNION ALL SELECT 1 UNION ALL SELECT 2  UNION ALL SELECT 3 UNION ALL SELECT 4 
+    /*Student Enrollment dates go back up to 12 years*/
+    UNION ALL SELECT 1 
+    UNION ALL SELECT 2  
+    UNION ALL SELECT 3 
+    UNION ALL SELECT 4 
+    UNION ALL SELECT 5
+    UNION ALL SELECT 6  
+    UNION ALL SELECT 7 
+    UNION ALL SELECT 8 
+    UNION ALL SELECT 9
+    UNION ALL SELECT 10
+    UNION ALL SELECT 11 
+    UNION ALL SELECT 12
 ),
 
 /*SCHOOL_SESSIONS AS (
@@ -55,7 +67,7 @@ STUDENT_ASSOCIATION_BASE AS (
         -- Calculate the end year of the school year based on EndDate (August 1st to July 31st)
         -->>Added additional logic to ensure that the SchoolYearEnd field is never NULL.  
         -->>When no end date present, use current date
-      /*  CASE
+       /* CASE
             WHEN t.ExitWithdrawDate is not null THEN
                 (SELECT SchoolYear FROM SCHOOL_SESSIONS AS ss
                     WHERE 
@@ -91,23 +103,22 @@ SCHOOL_YEARS_EXPANDED AS (
         sab.StudentID,
         sab.StartDate,
         sab.EndDate,
-        sab.SchoolYearStart,
-        sab.SchoolYearEnd - syn.YearOffset AS SchoolYearEnd
+        sab.SchoolYearStart + syn.YearOffset as SchoolYearStart,
+        sab.SchoolYearEnd
     FROM
         STUDENT_ASSOCIATION_BASE sab
         CROSS JOIN SCHOOL_YEAR_NUMBERS syn
    WHERE
         -- Only include years that fall within the association period
-       sab.SchoolYearEnd -  syn.YearOffset >= sab.SchoolYearStart
+       sab.SchoolYearStart +  syn.YearOffset <= sab.SchoolYearEnd
 )
-
 
 SELECT 
     sye.StudentID,
     -- Format the school year as 'YYYY-YYYY+1' based on the August-July definition
-    CAST(sye.SchoolYearEnd -1  AS NVARCHAR(4)) + '-' + CAST(sye.SchoolYearEnd AS NVARCHAR(4)) AS SchoolYear,
-    sye.SchoolYearEnd-1 AS SchoolYearStart,--Added SchoolYearStart as it's own field so that it can be used in Retention calculations
-    sye.SchoolYearEnd,
+    CAST(sye.SchoolYearStart  AS NVARCHAR(4)) + '-' + CAST(sye.SchoolYearStart+1 AS NVARCHAR(4)) AS SchoolYear,
+    sye.SchoolYearStart,
+    sye.SchoolYearStart+1 AS SchoolYearEnd,
 	stud.[StudentUSI]
 	,stud.[FirstName]
 	,stud.[LastSurname]
@@ -134,7 +145,7 @@ INNER JOIN [edfi].[StudentSchoolAssociation] as ssa
 		ON lea.EducationOrganizationId = SchoolLEA.LocalEducationAgencyId
 	LEFT JOIN  [edfi].[StudentEducationOrganizationAssociationRace] AS studRace --get race association
 		ON StudRace.EducationOrganizationId = lea.EducationOrganizationId AND StudRace.StudentUSI = ssa.StudentUSI -- race per student per school
-	LEFT JOIN [edfi].[Descriptor] as r
+	LEFT JOIN [edfi].[Descriptor] AS r
 		ON r.DescriptorId = studRace.RaceDescriptorId
 WHERE
     -- Ensure that the generated school year actually overlaps with the student's association period.
@@ -143,3 +154,4 @@ WHERE
     (sye.EndDate IS NULL OR DATEFROMPARTS(sye.SchoolYearStart, 8, 1) <= sye.EndDate)
     AND
     (DATEFROMPARTS(sye.SchoolYearStart + 1, 7, 31) >= sye.StartDate)
+    AND  SchoolYearStart > YEAR(GETDATE())-10
