@@ -129,13 +129,13 @@ SELECT
     s.[YearsOfPriorTeachingExperience],
     s.BirthDate,
     CASE
-          WHEN YEAR(seoaa.BeginDate) = sye.SchoolYearStart  AND  MONTH(seoaa.BeginDate) >= 6 THEN 1
-        WHEN YEAR(seoaa.BeginDate) = sye.SchoolYearStart + 1 AND  MONTH(seoaa.BeginDate) < 6 THEN 1
-        ELSE 0
+          WHEN YEAR(seoaa.BeginDate) = sye.SchoolYearStart  AND  MONTH(seoaa.BeginDate) >= 6 THEN 'New Hire'
+        WHEN YEAR(seoaa.BeginDate) = sye.SchoolYearStart + 1 AND  MONTH(seoaa.BeginDate) < 6 THEN 'New Hire'
+        ELSE CONVERT(varchar,null)
     END AS NewHire,
     CASE
-        WHEN (CONVERT(int,CONVERT(char(8),DATEFROMPARTS(sye.SchoolYearStart+1,6,15),112))-CONVERT(char(8),s.BirthDate,112))/10000 >= 56 THEN 1
-        ELSE 0
+        WHEN (CONVERT(int,CONVERT(char(8),DATEFROMPARTS(sye.SchoolYearStart+1,6,15),112))-CONVERT(char(8),s.BirthDate,112))/10000 >= 56 THEN 'Near Retirement'
+        ELSE CONVERT(varchar,null)
     END AS NearRetirement
 FROM
     SCHOOL_YEARS_EXPANDED sye
