@@ -51,6 +51,7 @@ STAFF_ASSIGNMENT_BASE AS (
         t.BeginDate AS StartDate,
         CASE
             WHEN t.EndDate IS NULL THEN GETDATE()
+            WHEN t.EndDate > GETDATE() THEN GETDATE()
             ELSE t.EndDate
         END AS EndDate,
         -- Calculate the start year of the school year based on StartDate (August 1st to July 31st)
@@ -241,3 +242,4 @@ AS RetentionStatus
 FROM STAFF_BASE AS sb
 --Limit dataset to Start Years needed for dashboards. Using past 10 Years.
 WHERE SchoolYearStart>YEAR(GETDATE())-10
+
