@@ -9,21 +9,8 @@ WITH VacancyBase AS (
               --to allow for distict counts of vacancies when agregating by Year
             WHEN osp.DatePostingRemoved IS NULL THEN osp.RequisitionNumber 
             ELSE NULL END as isPositionOpen 
-        /*,CASE
-            WHEN DAY(DatePosted) between 1 and 6 THEN 'Math'
-            WHEN DAY(DatePosted) between 7 and 13 THEN 'English'
-            WHEN DAY(DatePosted) between 14 and 22 THEN 'Science'
-            WHEN DAY(DatePosted) between 23 and 31 THEN 'Social Studies'
-            else 'Other'
-        END*/
+
         ,ospasd.CodeValue  AS AssignmentCategory --Academic Subject of open Position
-     /*   ,CASE
-            WHEN DAY(DatePosted) between 1 and 6 THEN 'High'
-            WHEN DAY(DatePosted) between 7 and 13 THEN 'Middle'
-            WHEN DAY(DatePosted) between 14 and 22 THEN 'Elementary'
-            WHEN DAY(DatePosted) between 23 and 31 THEN 'Junior High'
-            else 'Other'
-        END AS Segment -- Placeholder for segment based on day of month*/
         ,scd.CodeValue AS AssignmentType -- Staff classification descriptor value
         ,school.[NameOfInstitution] AS Campus -- Name of the institution (Campus)
         ,scdesc.CodeValue AS Segment
@@ -40,22 +27,26 @@ WITH VacancyBase AS (
             ELSE
                 CAST(YEAR(osp.DatePosted) - 1 AS VARCHAR(4)) + '-' + CAST(YEAR(osp.DatePosted) AS VARCHAR(4))
         END AS SchoolYear
-        -- Determine the initial session name based on the DatePosted month ranges
-        ,CASE
-            WHEN MONTH(osp.DatePosted) BETWEEN 8 AND 10 THEN 'Fall' -- Aug, Sept, Oct
-            WHEN MONTH(osp.DatePosted) IN (11, 12, 1) THEN 'Winter' -- Nov, Dec, Jan
-            WHEN MONTH(osp.DatePosted) BETWEEN 2 AND 4 THEN 'Spring' -- Feb, March, April
-            WHEN MONTH(osp.DatePosted) BETWEEN 5 AND 7 THEN 'Summer' -- May, June, July
-            ELSE 'Unknown'
-        END AS InitialSessionName
+        -- Determine the initial session name based on the DatePosted month 
+        , DATENAME(month,osp.DatePosted) AS InitialSessionName
         -- Assign an order to the initial session for comparison
-        ,CASE
-            WHEN MONTH(osp.DatePosted) BETWEEN 8 AND 10 THEN 1 -- Fall
-            WHEN MONTH(osp.DatePosted) IN (11, 12, 1) THEN 2 -- Winter
-            WHEN MONTH(osp.DatePosted) BETWEEN 2 AND 4 THEN 3 -- Spring
-            WHEN MONTH(osp.DatePosted) BETWEEN 5 AND 7 THEN 4 -- Summer
+        ,
+        CASE-- School Year Hiring Starts in August
+            WHEN MONTH(osp.DatePosted) = 8  THEN 1 
+            WHEN MONTH(osp.DatePosted) = 9 THEN 2
+            WHEN MONTH(osp.DatePosted) = 10 THEN 3 
+            WHEN MONTH(osp.DatePosted) = 11 THEN 4
+            WHEN MONTH(osp.DatePosted) =12  THEN 5 
+            WHEN MONTH(osp.DatePosted) = 1 THEN 6
+            WHEN MONTH(osp.DatePosted) = 2 THEN 7 
+            WHEN MONTH(osp.DatePosted) = 3 THEN 8
+            WHEN MONTH(osp.DatePosted) = 4  THEN 9 
+            WHEN MONTH(osp.DatePosted) = 5 THEN 10
+            WHEN MONTH(osp.DatePosted) = 6 THEN 11 
+            WHEN MONTH(osp.DatePosted) = 7 THEN 12
             ELSE 0 -- Unknown or unhandled case
-        END AS InitialSessionOrder
+        END  AS InitialSessionOrder
+        ,MONTH(osp.DatePosted) AS MonthOrder
         ,osp.LastModifiedDate AS LastRefreshed
     FROM [EdFi_Ods_Populated_Template].[edfi].[OpenStaffPosition] AS osp
         LEFT JOIN  [EdFi_Ods_Populated_Template].[edfi].[EducationOrganization] AS eo
@@ -82,10 +73,19 @@ WITH VacancyBase AS (
 ),
 -- CTE to define all academic sessions and their respective orders
 AllSessions AS (
-    SELECT 'Fall' AS SessionName, 1 AS SessionOrder
-    UNION ALL SELECT 'Winter', 2
-    UNION ALL SELECT 'Spring', 3
-    UNION ALL SELECT 'Summer', 4
+     SELECT 'August' AS SessionName, 1 AS SessionOrder, 8 AS MonthOrder
+    UNION ALL SELECT 'September', 2,9
+    UNION ALL SELECT 'October', 3,10
+    UNION ALL SELECT 'November', 4,11
+    UNION ALL SELECT 'December', 5,12
+    UNION ALL SELECT 'January' , 6,1
+    UNION ALL SELECT 'February', 7,2
+    UNION ALL SELECT 'March', 8,3
+    UNION ALL SELECT 'April', 9,4
+    UNION ALL SELECT 'May', 10,5
+    UNION ALL SELECT 'June', 11,6
+    UNION ALL SELECT 'July', 12,7
+
 )
 -- First part of the UNION ALL:
 -- Selects open positions and cross-joins them with all sessions
@@ -108,12 +108,12 @@ SELECT
     ,vb.LastRefreshed -- Included LastRefreshed in the final select
 FROM VacancyBase AS vb
 INNER JOIN AllSessions AS s
-    ON vb.isPositionOpen IS NOT NULL  AND s.SessionOrder >= vb.InitialSessionOrder
+   ON vb.isPositionOpen IS NOT NULL  AND s.SessionOrder >= vb.InitialSessionOrder
 
 UNION ALL
 
 -- Second part of the UNION ALL:
--- Selects closed positions and only includes the row for their initial posting session.
+-- Selects closed positions and  includes for each month the vacancy was open.
 SELECT
     vb.[EducationOrganizationId]
     ,vb.DatePosted
@@ -128,7 +128,14 @@ SELECT
     ,vb.District
     ,vb.LEAId
     ,vb.SchoolYear
-    ,vb.InitialSessionName AS Session -- The initial session name for closed positions
+    ,s.SessionName AS Session -- The initial session name for closed positions
     ,vb.LastRefreshed -- Included LastRefreshed in the final select
 FROM VacancyBase AS vb
-WHERE vb.isPositionOpen IS NULL;
+INNER JOIN AllSessions AS s
+   ON vb.isPositionOpen IS  NULL  
+   AND s.SessionOrder >= vb.InitialSessionOrder 
+   AND (
+       SELECT SessionOrder 
+       FROM AllSessions 
+       WHERE MonthOrder = MONTH(vb.DatePostingRemoved))>=s.SessionOrder;
+
