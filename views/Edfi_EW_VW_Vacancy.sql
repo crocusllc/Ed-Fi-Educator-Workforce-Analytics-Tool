@@ -10,10 +10,10 @@ WITH VacancyBase AS (
             WHEN osp.DatePostingRemoved IS NULL THEN osp.RequisitionNumber 
             ELSE NULL END as isPositionOpen 
 
-        ,ospasd.CodeValue  AS AssignmentCategory --Academic Subject of open Position
+        ,CASE WHEN ospasd.CodeValue IS NULL THEN 'None' ELSE ospasd.CodeValue  END AS AssignmentCategory --Academic Subject of open Position
         ,scd.CodeValue AS AssignmentType -- Staff classification descriptor value
         ,school.[NameOfInstitution] AS Campus -- Name of the institution (Campus)
-        ,scdesc.CodeValue AS Segment
+        ,CASE WHEN scdesc.CodeValue  IS NULL THEN 'District' ELSE scdesc.CodeValue END AS Segment
         ,school.[EducationOrganizationId] AS SchoolId -- Education Organization ID for the school
         -- Handle district-level vacancies by using district name/ID if school is null
         ,CASE WHEN lea.[NameOfInstitution] IS NULL THEN school.[NameOfInstitution] ELSE lea.[NameOfInstitution] END AS District
@@ -137,5 +137,5 @@ INNER JOIN AllSessions AS s
    AND (
        SELECT SessionOrder 
        FROM AllSessions 
-       WHERE MonthOrder = MONTH(vb.DatePostingRemoved))>=s.SessionOrder;
+       WHERE MonthOrder = MONTH(vb.DatePostingRemoved))>=s.SessionOrder
 
