@@ -44,6 +44,20 @@ WITH SCHOOL_YEAR_NUMBERS AS (
     UNION ALL SELECT 40
 ),
 
+StaffRaceAssoc AS (
+SELECT 
+	[StaffUSI],
+	CASE
+		WHEN count(RaceDescriptorId)>1
+		THEN
+			'2059'
+		ELSE min(RaceDescriptorId)
+	END
+	AS RaceDescriptorId
+FROM [edfi].[StaffRace]
+GROUP BY StaffUSI
+),
+
 STAFF_ASSIGNMENT_BASE AS (
     -- Calculate the base assignment data with school year ranges
     SELECT
@@ -112,7 +126,7 @@ SELECT
         ELSE NULL
     END AS nonRetentionYear,
     scd.CodeValue AS StaffAssignmentType,
-    asd.CodeValue AS AssignmentSubjectCategory,
+    CASE WHEN asd.CodeValue  IS NULL THEN 'None' ELSE asd.CodeValue END AS AssignmentSubjectCategory,
     cred.ShortDescription AS CredentialType,
     edorg.[NameOfInstitution] AS Campus, -- Name used in the Dashboard
     edorg.[EducationOrganizationId] AS SchoolId,
@@ -132,11 +146,11 @@ SELECT
     CASE
           WHEN YEAR(seoaa.BeginDate) = sye.SchoolYearStart  AND  MONTH(seoaa.BeginDate) >= 6 THEN 'New Hire'
         WHEN YEAR(seoaa.BeginDate) = sye.SchoolYearStart + 1 AND  MONTH(seoaa.BeginDate) < 6 THEN 'New Hire'
-        ELSE CONVERT(varchar,null)
+        ELSE NULL
     END AS NewHire,
     CASE
         WHEN (CONVERT(int,CONVERT(char(8),DATEFROMPARTS(sye.SchoolYearStart+1,6,15),112))-CONVERT(char(8),s.BirthDate,112))/10000 >= 56 THEN 'Near Retirement'
-        ELSE CONVERT(varchar,null)
+        ELSE NULL
     END AS NearRetirement
 FROM
     SCHOOL_YEARS_EXPANDED sye
@@ -149,7 +163,8 @@ INNER JOIN [edfi].[StaffEducationOrganizationAssignmentAssociation] AS seoaa
 LEFT JOIN [edfi].[Staff] AS s
     ON s.StaffUSI = seoaa.StaffUSI
 -- Add Staff Race
-LEFT JOIN [edfi].[StaffRace] AS sr
+LEFT JOIN StaffRaceAssoc AS sr
+--LEFT JOIN [edfi].[StaffRace] AS sr
     ON sr.StaffUSI = seoaa.StaffUSI
 -- Join to school to get School Name
 LEFT JOIN [edfi].[EducationOrganization] AS edorg
@@ -242,4 +257,5 @@ AS RetentionStatus
 FROM STAFF_BASE AS sb
 --Limit dataset to Start Years needed for dashboards. Using past 10 Years.
 WHERE SchoolYearStart>YEAR(GETDATE())-10
+
 
