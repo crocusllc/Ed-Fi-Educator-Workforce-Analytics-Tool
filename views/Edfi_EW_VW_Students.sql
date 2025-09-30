@@ -17,30 +17,22 @@ WITH SCHOOL_YEAR_NUMBERS AS (
     UNION ALL SELECT 12
 ),
 
-/*SCHOOL_SESSIONS AS (
-    SELECT csy.SchoolYearDescription, sesh.*
-    FROM EdFi.SchoolYearType CSY 
-    JOIN (SELECT SchoolYear,
-		         SchoolId EducationOrganizationId,
-			     Min(BeginDate) FirstBeginDate,
-			     Max(EndDate) LastEndDate
-	    FROM Edfi.[Session]
-	    GROUP BY SchoolYear,
-		         SchoolId
-	    UNION
-	    SELECT SchoolYear,
-		         LocalEducationAgencyId EducationOrganizationId,
-			     Min(BeginDate) FirstBeginDate,
-			     Max(EndDate) LastEndDate
-	    FROM Edfi.[Session]
-	    JOIN Edfi.School	
-		    ON school.schoolId = Session.SchoolId
-	    GROUP BY SchoolYear,
-		         LocalEducationAgencyId
-	    ) Sesh
-	    ON CSY.SchoolYear = Sesh.SchoolYear
-),
-*/
+StudentRace AS (
+SELECT 
+    [EducationOrganizationId],
+	[StudentUSI],
+	CASE
+		WHEN count(RaceDescriptorId)>1
+		THEN
+			9999 -- placeholder to indicate multiracial
+		ELSE min(RaceDescriptorId)
+	END
+	AS RaceDescriptorId 
+FROM [EdFi_Ods_Populated_Template].[edfi].[StudentEducationOrganizationAssociationRace]
+GROUP BY StudentUSI,EducationOrganizationId
+), 
+
+
 STUDENT_ASSOCIATION_BASE AS (
     -- Calculate the base association data with school year ranges
     SELECT
@@ -50,51 +42,26 @@ STUDENT_ASSOCIATION_BASE AS (
             WHEN t.ExitWithdrawDate IS NULL THEN GETDATE()
             ELSE t.ExitWithdrawDate
         END AS EndDate,
-        -- Calculate the start year of the school year based on StartDate (August 1st to July 31st)
+        -- Calculate the start year of the school year based on StartDate (July 1st to June 30th)
       CASE
-            WHEN MONTH(t.EntryDate) >= 8 THEN YEAR(t.EntryDate)
+            WHEN MONTH(t.EntryDate) >= 7 THEN YEAR(t.EntryDate)
             ELSE YEAR(t.EntryDate) - 1
         END AS SchoolYearStart,
-       /*  (SELECT SchoolYear FROM SCHOOL_SESSIONS AS ss
-            WHERE 
-            ss.EducationOrganizationId = t.SchoolId and 
-             t.EntryDate >=   ss.FirstBeginDate
-            AND (t.EntryDate <= ss.LastEndDate)
-          )
-            AS SchoolYearStart,*/
         --ss.SchoolYear - 1 AS SchoolYearStart,
         --ss.SchoolYear AS SchoolYearEnd,
-        -- Calculate the end year of the school year based on EndDate (August 1st to July 31st)
+        -- Calculate the end year of the school year based on EndDate (July 1st to June 30th)
         -->>Added additional logic to ensure that the SchoolYearEnd field is never NULL.  
         -->>When no end date present, use current date
-       /* CASE
-            WHEN t.ExitWithdrawDate is not null THEN
-                (SELECT SchoolYear FROM SCHOOL_SESSIONS AS ss
-                    WHERE 
-                    ss.EducationOrganizationId = t.SchoolId and 
-                     t.ExitWithdrawDate >=   ss.FirstBeginDate
-                    AND (t.ExitWithdrawDate <= ss.LastEndDate)
-                  )
-            ELSE
-                   (SELECT max(SchoolYear) FROM SCHOOL_SESSIONS AS ss
-                        WHERE 
-                        ss.EducationOrganizationId = t.SchoolId  
-                      )  
-          END            
-                      AS SchoolYearEnd,*/
         CASE
-            WHEN MONTH(t.ExitWithdrawDate) >= 8 AND t.ExitWithdrawDate is not null THEN YEAR(t.ExitWithdrawDate)
-            WHEN MONTH(GETDATE()) >= 8 AND t.ExitWithdrawDate is null THEN YEAR(GETDATE())
-            WHEN MONTH(t.ExitWithdrawDate) < 8 AND t.ExitWithdrawDate is not null THEN YEAR(t.ExitWithdrawDate)-1
-            WHEN MONTH(GETDATE()) < 8 AND t.ExitWithdrawDate is null THEN YEAR(GETDATE())-1
+            WHEN MONTH(t.ExitWithdrawDate) >= 7 AND t.ExitWithdrawDate is not null THEN YEAR(t.ExitWithdrawDate)
+            WHEN MONTH(GETDATE()) >= 7 AND t.ExitWithdrawDate is null THEN YEAR(GETDATE())
+            WHEN MONTH(t.ExitWithdrawDate) < 7 AND t.ExitWithdrawDate is not null THEN YEAR(t.ExitWithdrawDate)-1
+            WHEN MONTH(GETDATE()) < 7 AND t.ExitWithdrawDate is null THEN YEAR(GETDATE())-1
         END AS SchoolYearEnd,
         SchoolId
     FROM
         [edfi].[StudentSchoolAssociation] AS t
-      /*  JOIN SCHOOL_SESSIONS as ss
-        ON ss.EducationOrganizationId = t.SchoolId
-        where  t.EntryDate <=   ss.LastEndDate
-       AND (t.ExitWithdrawDate >= ss.FirstBeginDate OR t.ExitWithdrawDate IS NULL)*/
+
 ),
 
 SCHOOL_YEARS_EXPANDED AS (
@@ -128,7 +95,11 @@ SELECT
 	,school.[EducationOrganizationId] AS SchoolId
 	,lea.[NameOfInstitution] AS District
 	,lea.[EducationOrganizationId] AS LEAId
-	,r.[ShortDescription] AS RaceEthnic
+	,CASE 
+        WHEN StudRace.[RaceDescriptorId] = 9999 THEN 'Multiple' --Calpads aligned language
+        WHEN r.[ShortDescription] IS NULL THEN 'None'
+        ELSE  r.[ShortDescription] 
+     END AS RaceEthnic
 
 FROM
     SCHOOL_YEARS_EXPANDED sye
@@ -143,15 +114,16 @@ INNER JOIN [edfi].[StudentSchoolAssociation] as ssa
 		ON SchoolLEA.SchoolId = ssa.SchoolId
 	LEFT JOIN [edfi].[EducationOrganization] AS lea --finally join seoa again to get LEA Name
 		ON lea.EducationOrganizationId = SchoolLEA.LocalEducationAgencyId
-	LEFT JOIN  [edfi].[StudentEducationOrganizationAssociationRace] AS studRace --get race association
-		ON StudRace.EducationOrganizationId = lea.EducationOrganizationId AND StudRace.StudentUSI = ssa.StudentUSI -- race per student per school
+   LEFT JOIN StudentRace as StudRace
+        ON StudRace.EducationOrganizationId = lea.EducationOrganizationId AND StudRace.StudentUSI = ssa.StudentUSI -- race per student per school
 	LEFT JOIN [edfi].[Descriptor] AS r
 		ON r.DescriptorId = studRace.RaceDescriptorId
 WHERE
     -- Ensure that the generated school year actually overlaps with the student's association period.
     -- This filters out school years that might be generated by the recursion but don't
     -- truly fall within the student's active association dates.
-    (sye.EndDate IS NULL OR DATEFROMPARTS(sye.SchoolYearStart, 8, 1) <= sye.EndDate)
+    (sye.EndDate IS NULL OR DATEFROMPARTS(sye.SchoolYearStart, 7, 1) <= sye.EndDate)
     AND
-    (DATEFROMPARTS(sye.SchoolYearStart + 1, 7, 31) >= sye.StartDate)
+    (DATEFROMPARTS(sye.SchoolYearStart + 1, 6, 30) >= sye.StartDate)
     AND  SchoolYearStart > YEAR(GETDATE())-10
+
