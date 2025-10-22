@@ -48,26 +48,26 @@ WITH VacancyBase AS (
         END  AS InitialSessionOrder
         ,MONTH(osp.DatePosted) AS MonthOrder
         ,osp.LastModifiedDate AS LastRefreshed
-    FROM [EdFi_Ods_Populated_Template].[edfi].[OpenStaffPosition] AS osp
-        LEFT JOIN  [EdFi_Ods_Populated_Template].[edfi].[EducationOrganization] AS eo
+    FROM [edfi].[OpenStaffPosition] AS osp
+        LEFT JOIN  [edfi].[EducationOrganization] AS eo
             ON osp.EducationOrganizationId = eo.EducationOrganizationId
-        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[EducationOrganization] AS school
+        LEFT JOIN [edfi].[EducationOrganization] AS school
             ON school.EducationOrganizationId = osp.EducationOrganizationId
-        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[School] AS SchoolLEA
+        LEFT JOIN [edfi].[School] AS SchoolLEA
             ON SchoolLEA.SchoolId = osp.EducationOrganizationId
-        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[EducationOrganization] AS lea
+        LEFT JOIN [edfi].[EducationOrganization] AS lea
             ON lea.EducationOrganizationId = SchoolLEA.LocalEducationAgencyId
-        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS scd
+        LEFT JOIN [edfi].[Descriptor] AS scd
             ON scd.DescriptorId = osp.StaffClassificationDescriptorId
         --Add School Category Descriptor
-        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[SchoolCategory] AS schoolCat
+        LEFT JOIN [edfi].[SchoolCategory] AS schoolCat
             ON schoolCat.SchoolId = osp.EducationOrganizationId
-        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS  scdesc
+        LEFT JOIN [edfi].[Descriptor] AS  scdesc
             ON scdesc.DescriptorId = schoolCat.SchoolCategoryDescriptorId
         --Add Academic Subject Category "Assignment Category"
-        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[OpenStaffPositionAcademicSubject] AS ospas
+        LEFT JOIN [edfi].[OpenStaffPositionAcademicSubject] AS ospas
             ON ospas.EducationOrganizationId = osp.EducationOrganizationId AND ospas.RequisitionNumber = osp.RequisitionNumber
-        LEFT JOIN [EdFi_Ods_Populated_Template].[edfi].[Descriptor] AS  ospasd
+        LEFT JOIN [edfi].[Descriptor] AS  ospasd
             ON ospasd.DescriptorId = ospas.AcademicSubjectDescriptorId
 
 ),
@@ -138,4 +138,5 @@ INNER JOIN AllSessions AS s
        SELECT SessionOrder 
        FROM AllSessions 
        WHERE MonthOrder = MONTH(vb.DatePostingRemoved))>=s.SessionOrder
+
 
