@@ -28,7 +28,7 @@ SELECT
 		ELSE min(RaceDescriptorId)
 	END
 	AS RaceDescriptorId 
-FROM [EdFi_Ods_Populated_Template].[edfi].[StudentEducationOrganizationAssociationRace]
+FROM [edfi].[StudentEducationOrganizationAssociationRace]
 GROUP BY StudentUSI,EducationOrganizationId
 ), 
 
@@ -126,4 +126,5 @@ WHERE
     AND
     (DATEFROMPARTS(sye.SchoolYearStart + 1, 6, 30) >= sye.StartDate)
     AND  SchoolYearStart > YEAR(GETDATE())-10
+
 
