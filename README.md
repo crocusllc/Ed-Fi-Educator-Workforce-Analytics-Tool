@@ -21,3 +21,7 @@
 [Initial Data Element Scoping](https://docs.google.com/spreadsheets/d/1OyujCxJLKFXLB66GSixu4rGT7Bwvy7bDqkoz_MvnvLE/edit?gid=1422748811#gid=1422748811)
 
 [Educator Workforce Use Case](https://edfi.atlassian.net/wiki/spaces/EPP/pages/544669702/Educator+Workforce+Use+Case)
+
+## Style Guide
+   <img src="https://docs.ed-fi.org/img/ed-fi-logo-light.svg" height="148px" width="300px" alt="Ed-Fi Logo">
+Ed-Fi Colors:  ["#424781","#65BCAA","#F16B3B","#05A0C0","#D21871","#98288B","#FFC62D","#E31666","#3599B8","#DFBFBF","#4AC5BB","#5F6B6D","#FB8281","#F4D25A","#7F898A","#A4DDEE","#FDAB89","#B687AC","#28738A","#A78F8F","#168980","#293537","#BB4A4A","#B59525","#475052","#6A9FB0","#BD7150","#7B4F71","#1B4D5C","#706060","#0F5C55","#1C2325"]
