@@ -11,4 +11,4 @@
 
 ## Style Guide
    <img src="https://docs.ed-fi.org/img/ed-fi-logo-light.svg" height="148px" width="300px" alt="Ed-Fi Logo">
-Ed-Fi Colors:  ["#5600DA","#1280E5","#2EBDD0","#3EC1A2","#3EC1A2","#902687","#E23A77","#FF6726","#F4AB1C","#C4C739"]
+Theme Colors:   #5600DA,#1280E5, #2EBDD0, #3EC1A2, #3EC1A2, #902687, #E23A77, #FF6726, #F4AB1C, #C4C739 
