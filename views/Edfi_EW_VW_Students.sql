@@ -1,130 +1,108 @@
-CREATE VIEW vw_Student AS
-
-WITH SCHOOL_YEAR_NUMBERS AS (
-    SELECT 0 AS YearOffset
-    /*Student Enrollment dates go back up to 12 years*/
-    UNION ALL SELECT 1 
-    UNION ALL SELECT 2  
-    UNION ALL SELECT 3 
-    UNION ALL SELECT 4 
-    UNION ALL SELECT 5
-    UNION ALL SELECT 6  
-    UNION ALL SELECT 7 
-    UNION ALL SELECT 8 
-    UNION ALL SELECT 9
-    UNION ALL SELECT 10
-    UNION ALL SELECT 11 
-    UNION ALL SELECT 12
+CREATE OR ALTER VIEW vw_Student AS
+WITH 
+-- 1. Tally Table (Cleaner VALUES Syntax)
+YearOffsets (YearOffset) AS (
+    SELECT v.YearOffset 
+    FROM (VALUES (0),(1),(2),(3),(4),(5),(6),
+                 (7),(8),(9),(10),(11),(12)
+         ) AS v(YearOffset)
 ),
 
+-- 2. Race Handling
 StudentRace AS (
-SELECT 
-    [EducationOrganizationId],
-	[StudentUSI],
-	CASE
-		WHEN count(RaceDescriptorId)>1
-		THEN
-			9999 -- placeholder to indicate multiracial
-		ELSE min(RaceDescriptorId)
-	END
-	AS RaceDescriptorId 
-FROM [edfi].[StudentEducationOrganizationAssociationRace]
-GROUP BY StudentUSI,EducationOrganizationId
+    SELECT 
+        [EducationOrganizationId],
+        [StudentUSI],
+        CASE 
+            WHEN COUNT(RaceDescriptorId) > 1 THEN 9999 -- Multiracial
+            ELSE MIN(RaceDescriptorId) 
+        END AS RaceDescriptorId 
+    FROM [edfi].[StudentEducationOrganizationAssociationRace]
+    GROUP BY StudentUSI, EducationOrganizationId
 ), 
 
-
+-- 3. Base Association Logic
 STUDENT_ASSOCIATION_BASE AS (
-    -- Calculate the base association data with school year ranges
-    SELECT
+    SELECT 
         t.StudentUSI AS StudentID,
         t.EntryDate AS StartDate,
-       CASE
+        CASE 
             WHEN t.ExitWithdrawDate IS NULL THEN GETDATE()
             ELSE t.ExitWithdrawDate
         END AS EndDate,
-        -- Calculate the start year of the school year based on StartDate (July 1st to June 30th)
-      CASE
+        -- Start Year Calculation
+        CASE 
             WHEN MONTH(t.EntryDate) >= 7 THEN YEAR(t.EntryDate)
             ELSE YEAR(t.EntryDate) - 1
         END AS SchoolYearStart,
-        --ss.SchoolYear - 1 AS SchoolYearStart,
-        --ss.SchoolYear AS SchoolYearEnd,
-        -- Calculate the end year of the school year based on EndDate (July 1st to June 30th)
-        -->>Added additional logic to ensure that the SchoolYearEnd field is never NULL.  
-        -->>When no end date present, use current date
-        CASE
-            WHEN MONTH(t.ExitWithdrawDate) >= 7 AND t.ExitWithdrawDate is not null THEN YEAR(t.ExitWithdrawDate)
-            WHEN MONTH(GETDATE()) >= 7 AND t.ExitWithdrawDate is null THEN YEAR(GETDATE())
-            WHEN MONTH(t.ExitWithdrawDate) < 7 AND t.ExitWithdrawDate is not null THEN YEAR(t.ExitWithdrawDate)-1
-            WHEN MONTH(GETDATE()) < 7 AND t.ExitWithdrawDate is null THEN YEAR(GETDATE())-1
+        -- End Year Calculation
+        CASE 
+            WHEN MONTH(t.ExitWithdrawDate) >= 7 AND t.ExitWithdrawDate IS NOT NULL THEN YEAR(t.ExitWithdrawDate)
+            WHEN MONTH(GETDATE()) >= 7 AND t.ExitWithdrawDate IS NULL THEN YEAR(GETDATE())
+            WHEN MONTH(t.ExitWithdrawDate) < 7 AND t.ExitWithdrawDate IS NOT NULL THEN YEAR(t.ExitWithdrawDate)-1
+            WHEN MONTH(GETDATE()) < 7 AND t.ExitWithdrawDate IS NULL THEN YEAR(GETDATE())-1
         END AS SchoolYearEnd,
-        SchoolId
-    FROM
-        [edfi].[StudentSchoolAssociation] AS t
-
+        t.SchoolId
+    FROM [edfi].[StudentSchoolAssociation] AS t
 ),
 
+-- 4. The Explosion (Cross Join)
 SCHOOL_YEARS_EXPANDED AS (
-    -- Cross join with the numbers to create all school years for each student association
-    SELECT
+    SELECT 
         sab.StudentID,
         sab.StartDate,
         sab.EndDate,
-        sab.SchoolYearStart + syn.YearOffset as SchoolYearStart,
+        sab.SchoolYearStart + syn.YearOffset AS SchoolYearStart,
         sab.SchoolYearEnd
-    FROM
-        STUDENT_ASSOCIATION_BASE sab
-        CROSS JOIN SCHOOL_YEAR_NUMBERS syn
-   WHERE
-        -- Only include years that fall within the association period
-       sab.SchoolYearStart +  syn.YearOffset <= sab.SchoolYearEnd
+    FROM STUDENT_ASSOCIATION_BASE sab
+    CROSS JOIN YearOffsets syn
+    WHERE 
+        (sab.SchoolYearStart + syn.YearOffset) <= sab.SchoolYearEnd
 )
 
+-- 5. Final Join & Select
 SELECT 
     sye.StudentID,
-    -- Format the school year as 'YYYY-YYYY+1' based on the August-July definition
-    CAST(sye.SchoolYearStart  AS NVARCHAR(4)) + '-' + CAST(sye.SchoolYearStart+1 AS NVARCHAR(4)) AS SchoolYear,
+    -- Format: YYYY-YYYY+1
+    CAST(sye.SchoolYearStart AS NVARCHAR(4)) + '-' + CAST(sye.SchoolYearStart+1 AS NVARCHAR(4)) AS SchoolYear,
     sye.SchoolYearStart,
     sye.SchoolYearStart+1 AS SchoolYearEnd,
-	stud.[StudentUSI]
-	,stud.[FirstName]
-	,stud.[LastSurname]
-	,ssa.[EntryDate]
-	,ssa.[ExitWithdrawDate]
-	,school.[NameOfInstitution] AS Campus
-	,school.[EducationOrganizationId] AS SchoolId
-	,lea.[NameOfInstitution] AS District
-	,lea.[EducationOrganizationId] AS LEAId
-	,CASE 
-        WHEN StudRace.[RaceDescriptorId] = 9999 THEN 'Multiple' --Calpads aligned language
+    stud.[StudentUSI],
+    stud.[FirstName],
+    stud.[LastSurname],
+    ssa.[EntryDate],
+    ssa.[ExitWithdrawDate],
+    school.[NameOfInstitution] AS Campus,
+    school.[EducationOrganizationId] AS SchoolId,
+    lea.[NameOfInstitution] AS District,
+    lea.[EducationOrganizationId] AS LEAId,
+    CASE 
+        WHEN StudRace.[RaceDescriptorId] = 9999 THEN 'Multiple'
         WHEN r.[ShortDescription] IS NULL THEN 'None'
-        ELSE  r.[ShortDescription] 
-     END AS RaceEthnic
+        ELSE r.[ShortDescription] 
+    END AS RaceEthnic
 
-FROM
-    SCHOOL_YEARS_EXPANDED sye
-INNER JOIN [edfi].[StudentSchoolAssociation] as ssa
+FROM SCHOOL_YEARS_EXPANDED sye
+-- Join back to original table to replicate original row count behavior
+INNER JOIN [edfi].[StudentSchoolAssociation] AS ssa
     ON sye.StudentID = ssa.StudentUSI
     AND sye.StartDate = ssa.EntryDate
-	LEFT JOIN   [edfi].[Student] AS stud --then adding student details for enrollment
-		ON ssa.StudentUSI = stud.StudentUSI
-	LEFT JOIN [edfi].[EducationOrganization] AS school --then seoa joined to school to get School Name
-		on school.EducationOrganizationId = ssa.SchoolId
-	LEFT JOIN [edfi].[School] AS SchoolLEA --now join school to get associated LEA
-		ON SchoolLEA.SchoolId = ssa.SchoolId
-	LEFT JOIN [edfi].[EducationOrganization] AS lea --finally join seoa again to get LEA Name
-		ON lea.EducationOrganizationId = SchoolLEA.LocalEducationAgencyId
-   LEFT JOIN StudentRace as StudRace
-        ON StudRace.EducationOrganizationId = lea.EducationOrganizationId AND StudRace.StudentUSI = ssa.StudentUSI -- race per student per school
-	LEFT JOIN [edfi].[Descriptor] AS r
-		ON r.DescriptorId = studRace.RaceDescriptorId
-WHERE
-    -- Ensure that the generated school year actually overlaps with the student's association period.
-    -- This filters out school years that might be generated by the recursion but don't
-    -- truly fall within the student's active association dates.
+
+INNER JOIN [edfi].[Student] AS stud 
+    ON ssa.StudentUSI = stud.StudentUSI
+INNER JOIN [edfi].[EducationOrganization] AS school 
+    ON school.EducationOrganizationId = ssa.SchoolId
+LEFT JOIN [edfi].[School] AS SchoolLEA 
+    ON SchoolLEA.SchoolId = ssa.SchoolId
+LEFT JOIN [edfi].[EducationOrganization] AS lea 
+    ON lea.EducationOrganizationId = SchoolLEA.LocalEducationAgencyId
+LEFT JOIN StudentRace AS StudRace
+    ON StudRace.EducationOrganizationId = lea.EducationOrganizationId 
+    AND StudRace.StudentUSI = ssa.StudentUSI
+LEFT JOIN [edfi].[Descriptor] AS r
+    ON r.DescriptorId = StudRace.RaceDescriptorId
+
+WHERE 
     (sye.EndDate IS NULL OR DATEFROMPARTS(sye.SchoolYearStart, 7, 1) <= sye.EndDate)
-    AND
-    (DATEFROMPARTS(sye.SchoolYearStart + 1, 6, 30) >= sye.StartDate)
-    AND  SchoolYearStart > YEAR(GETDATE())-10
-
-
+    AND (DATEFROMPARTS(sye.SchoolYearStart + 1, 6, 30) >= sye.StartDate)
+    AND sye.SchoolYearStart > YEAR(GETDATE())-10;
