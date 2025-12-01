@@ -1,6 +1,6 @@
 CREATE OR ALTER VIEW vw_Student AS
 WITH 
--- 1. Tally Table (Cleaner VALUES Syntax)
+-- Tally Table (Cleaner VALUES Syntax)
 YearOffsets (YearOffset) AS (
     SELECT v.YearOffset 
     FROM (VALUES (0),(1),(2),(3),(4),(5),(6),
@@ -8,7 +8,7 @@ YearOffsets (YearOffset) AS (
          ) AS v(YearOffset)
 ),
 
--- 2. Race Handling
+-- Race Handling
 StudentRace AS (
     SELECT 
         [EducationOrganizationId],
@@ -21,7 +21,7 @@ StudentRace AS (
     GROUP BY StudentUSI, EducationOrganizationId
 ), 
 
--- 3. Base Association Logic
+-- Base Association Logic
 STUDENT_ASSOCIATION_BASE AS (
     SELECT 
         t.StudentUSI AS StudentID,
@@ -46,7 +46,7 @@ STUDENT_ASSOCIATION_BASE AS (
     FROM [edfi].[StudentSchoolAssociation] AS t
 ),
 
--- 4. The Explosion (Cross Join)
+-- Cross Join
 SCHOOL_YEARS_EXPANDED AS (
     SELECT 
         sab.StudentID,
@@ -60,7 +60,7 @@ SCHOOL_YEARS_EXPANDED AS (
         (sab.SchoolYearStart + syn.YearOffset) <= sab.SchoolYearEnd
 )
 
--- 5. Final Join & Select
+-- Final Join & Select
 SELECT 
     sye.StudentID,
     -- Format: YYYY-YYYY+1
@@ -106,3 +106,4 @@ WHERE
     (sye.EndDate IS NULL OR DATEFROMPARTS(sye.SchoolYearStart, 7, 1) <= sye.EndDate)
     AND (DATEFROMPARTS(sye.SchoolYearStart + 1, 6, 30) >= sye.StartDate)
     AND sye.SchoolYearStart > YEAR(GETDATE())-10;
+
