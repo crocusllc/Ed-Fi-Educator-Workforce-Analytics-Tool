@@ -125,6 +125,7 @@ EnrichedStaff AS (
         s.LastSurname,
         s.YearsOfPriorTeachingExperience,
         s.BirthDate, -- Restored
+        'Countrywide' AS County,
 
         -- New Hire Logic
         CASE
@@ -204,6 +205,7 @@ SELECT
     es.LastSurname,
     es.YearsOfPriorTeachingExperience,
     es.BirthDate,
+    es.County,
     es.NewHire,
     es.NearRetirement,
     
@@ -230,3 +232,4 @@ SELECT
 
 FROM EnrichedStaff es
 WHERE es.SchoolYearStart > YEAR(GETDATE()) - 10
+
