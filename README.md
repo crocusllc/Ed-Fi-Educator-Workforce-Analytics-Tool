@@ -1,3 +1,37 @@
+# Educator Workforce Analytics Tool - Documentation
+
+This document is the central hub for the Ed-Fi Educator Workforce Analytics Tool documentation. Below you'll find a categorized list of links to all the documentation pages.
+
+## General Information
+
+-   [Home](./docs/wiki/Home.md)
+-   [Dashboard Overview](./docs/wiki/Dashboard-Overview.md)
+
+## Data Model and Architecture
+
+-   [Data Architecture](./docs/wiki/Data-Architecture.md)
+-   [Data Retention Logic](./docs/wiki/Data-%E2%80%90-Retention-Logic.md)
+-   [Staff Overview](./docs/wiki/Data-%E2%80%90-Staff-Overview.md)
+-   [Student Overview](./docs/wiki/Data-%E2%80%90-Student-Overview.md)
+-   [Vacancy Overview](./docs/wiki/Data-%E2%80%90-Vacancy-Overview.md)
+
+## Power BI Implementation
+
+-   [Power BI Design Notes](./docs/wiki/PowerBI-Design-Notes.md)
+-   [Power BI Set-Up & Installation](./docs/wiki/PowerBI-Set%E2%80%90Up-%E2%80%90-Installation.md)
+-   [Power BI Licensing Overview](./docs/wiki/Set-Up-%E2%80%90-PowerBI-Licensing-Overview.md)
+-   [Row-Level Security in Power BI](./docs/wiki/Row-Level-Security-%E2%80%90-Power-BI.md)
+
+## Apache Superset Implementation
+
+-   [Superset Design Notes](./docs/wiki/Superset-Design-Notes.md)
+-   [Superset Implementation Guide](./docs/wiki/Superset-Implementation.md)
+-   [Row-Level Security in Superset](./docs/wiki/Row-Level-Security-%E2%80%90-SuperSet.md)
+
+## Tool Comparison
+
+-   [Power BI vs. Apache Superset](./docs/wiki/About-PowerBI-vs-Apache-SuperSet.md)
+
 # Ed-Fi Educator Workforce Analytics Tool
 
 ## Ed-Fi Project Background Documentation
@@ -11,4 +45,4 @@
 
 ## Style Guide
    <img src="https://docs.ed-fi.org/img/ed-fi-logo-light.svg" height="148px" width="300px" alt="Ed-Fi Logo">
-Theme Colors:   #5600DA,#1280E5, #2EBDD0, #3EC1A2, #3EC1A2, #902687, #E23A77, #FF6726, #F4AB1C, #C4C739 
+Theme Colors:   #5600DA,#1280E5, #2EBDD0, #3EC1A2, #3EC1A2, #902687, #E23A77, #FF6726, #F4AB1C, #C4C739
