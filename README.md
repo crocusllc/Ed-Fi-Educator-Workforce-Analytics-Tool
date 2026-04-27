@@ -4,37 +4,38 @@ This document is the central hub for the Ed-Fi Educator Workforce Analytics Tool
 
 ## General Information
 
--   [Home](./docs/wiki/Home.md)
--   [Dashboard Overview](./docs/wiki/Dashboard-Overview.md)
+- [Home](./docs/wiki/Home.md)
+- [Dashboard Overview](./docs/wiki/Dashboard-Overview.md)
 
 ## Data Model and Architecture
 
--   [Data Architecture](./docs/wiki/Data-Architecture.md)
--   [Data Retention Logic](./docs/wiki/Data-%E2%80%90-Retention-Logic.md)
--   [Staff Overview](./docs/wiki/Data-%E2%80%90-Staff-Overview.md)
--   [Student Overview](./docs/wiki/Data-%E2%80%90-Student-Overview.md)
--   [Vacancy Overview](./docs/wiki/Data-%E2%80%90-Vacancy-Overview.md)
+- [Data Architecture](./docs/wiki/Data-Architecture.md)
+- [Data Retention Logic](./docs/wiki/Data-%E2%80%90-Retention-Logic.md)
+- [Staff Overview](./docs/wiki/Data-%E2%80%90-Staff-Overview.md)
+- [Student Overview](./docs/wiki/Data-%E2%80%90-Student-Overview.md)
+- [Vacancy Overview](./docs/wiki/Data-%E2%80%90-Vacancy-Overview.md)
 
 ## Power BI Implementation
 
--   [Power BI Design Notes](./docs/wiki/PowerBI-Design-Notes.md)
--   [Power BI Set-Up & Installation](./docs/wiki/PowerBI-Set%E2%80%90Up-%E2%80%90-Installation.md)
--   [Power BI Licensing Overview](./docs/wiki/Set-Up-%E2%80%90-PowerBI-Licensing-Overview.md)
--   [Row-Level Security in Power BI](./docs/wiki/Row-Level-Security-%E2%80%90-Power-BI.md)
+- [Power BI Design Notes](./docs/wiki/PowerBI-Design-Notes.md)
+- [Power BI Set-Up & Installation](./docs/wiki/PowerBI-Set%E2%80%90Up-%E2%80%90-Installation.md)
+- [Power BI Licensing Overview](./docs/wiki/Set-Up-%E2%80%90-PowerBI-Licensing-Overview.md)
+- [Row-Level Security in Power BI](./docs/wiki/Row-Level-Security-%E2%80%90-Power-BI.md)
 
 ## Apache Superset Implementation
 
--   [Superset Design Notes](./docs/wiki/Superset-Design-Notes.md)
--   [Superset Implementation Guide](./docs/wiki/Superset-Implementation.md)
--   [Row-Level Security in Superset](./docs/wiki/Row-Level-Security-%E2%80%90-SuperSet.md)
+- [Superset Design Notes](./docs/wiki/Superset-Design-Notes.md)
+- [Superset Implementation Guide](./docs/wiki/Superset-Implementation.md)
+- [Row-Level Security in Superset](./docs/wiki/Row-Level-Security-%E2%80%90-SuperSet.md)
 
 ## Tool Comparison
 
--   [Power BI vs. Apache Superset](./docs/wiki/About-PowerBI-vs-Apache-SuperSet.md)
+- [Power BI vs. Apache Superset](./docs/wiki/About-PowerBI-vs-Apache-SuperSet.md)
 
 # Ed-Fi Educator Workforce Analytics Tool
 
 ## Ed-Fi Project Background Documentation
+
 [Ed-Fi Provided Educator Workforce sample data review](https://docs.google.com/document/d/1rDXUjz_qIeo30jjAcOhRjVjTajfMdeSHDK5L09m2Nag/edit?tab=t.0)
 
 [Ed-Fi Provided Project User Stories](https://docs.google.com/document/d/1qLYXOgiPHO_T6f8SC9ZwCErKOtKSu1hLnUSwsOHE7Ec/edit?tab=t.0#heading=h.oi9lqzcslsvx)
@@ -44,5 +45,19 @@ This document is the central hub for the Ed-Fi Educator Workforce Analytics Tool
 [Educator Workforce Use Case](https://edfi.atlassian.net/wiki/spaces/EPP/pages/544669702/Educator+Workforce+Use+Case)
 
 ## Style Guide
-   <img src="https://docs.ed-fi.org/img/ed-fi-logo-light.svg" height="148px" width="300px" alt="Ed-Fi Logo">
+
+<img src="https://docs.ed-fi.org/img/ed-fi-logo-light.svg" height="148px" width="300px" alt="Ed-Fi Logo">
+
 Theme Colors:   #5600DA,#1280E5, #2EBDD0, #3EC1A2, #3EC1A2, #902687, #E23A77, #FF6726, #F4AB1C, #C4C739
+
+## Legal Information
+
+Copyright (c) 2026 Ed-Fi Alliance, LLC and contributors.
+
+Licensed under the [Apache License, Version 2.0](LICENSE) (the "License").
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
